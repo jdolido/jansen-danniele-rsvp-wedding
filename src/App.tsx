@@ -6,7 +6,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [attendance, setAttendance] = useState<string>("");
   const [guests, setGuests] = useState<number | "">("");
-  const [name, setName] = useState<string>("");
+  const [firstName, setFirstName] = useState<string>("");
+  const [lastName, setLastName] = useState<string>("");
   const [message, setMessage] = useState<string>("");
   // Validation errors (allow undefined so individual keys can be cleared)
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
@@ -20,7 +21,8 @@ export default function App() {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        setName(parsed.name || "");
+        setFirstName(parsed.firstName || "");
+        setLastName(parsed.lastName || "");
         setAttendance(parsed.attendance || "");
         setGuests(parsed.guests ?? 1);
         setMessage(parsed.message || "");
@@ -31,13 +33,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const payload = { name, attendance, guests, message };
+    const payload = { firstName, lastName, attendance, guests, message };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (e) {
       // ignore
     }
-  }, [name, attendance, guests, message]);
+  }, [firstName, lastName, attendance, guests, message]);
 
   // (toasts removed — using inline validation and alerts only)
 
@@ -46,8 +48,7 @@ export default function App() {
     const target = document.getElementById(id);
     if (target) {
       const yOffset = -70; // adjust for sticky nav
-      const y =
-        target.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      const y = target.getBoundingClientRect().top + window.pageYOffset + yOffset;
       window.scrollTo({ top: y, behavior: "smooth" });
     }
   };
@@ -58,9 +59,11 @@ export default function App() {
 
     // Basic validation (inline)
     const nextErrors: { [k: string]: string } = {};
-    if (!name.trim()) nextErrors.name = "Please enter your full name.";
+    if (!lastName.trim()) nextErrors.lastName = "Please enter your last name.";
+    if (!firstName.trim()) nextErrors.firstName = "Please enter your first name.";
     if (!attendance) nextErrors.attendance = "Please select whether you'll attend.";
-    if (attendance === "Yes" && (guests === "" || Number(guests) < 1)) nextErrors.guests = "Please provide the number of guests (minimum 1) when attending.";
+    if (attendance === "Yes" && (guests === "" || Number(guests) < 1))
+      nextErrors.guests = "Please provide the number of guests (minimum 1) when attending.";
 
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
@@ -68,22 +71,46 @@ export default function App() {
       return;
     }
 
-    const data = { name, attendance, guests: guests === "" ? null : guests, message };
+    const fullName = `${lastName.trim()}, ${firstName.trim()}`;
+    const data = {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      name: fullName,
+      attendance,
+      guests: guests === "" ? null : guests,
+      message,
+    };
 
     try {
       setLoading(true);
-      await fetch("https://script.google.com/macros/s/AKfycbz84IXmW592m9OHhGdaykaX9tPJni1NAhMBF0N0hLwEgaeehOPCxklqtCcrMHoQVCRT0A/exec", {
-        method: "POST",
-        mode: "no-cors", // 👈 bypasses CORS
-        body: JSON.stringify(data),
-        headers: {
-          "Content-Type": "application/json",
-        },
+      // Send as form-encoded to avoid CORS preflight (Apps Script accepts form data)
+      const url = "https://script.google.com/macros/s/AKfycby2J1xQTGyp5gE9_1V62Fv4KwdbJdNYT9efo9It8wD_HZRF5_7quJRgFl-O60vbZg0G_A/exec";
+      const params = new URLSearchParams();
+      Object.entries(data).forEach(([k, v]) => {
+        params.append(k, v == null ? "" : String(v));
       });
 
-  setSubmitted(true);
-  // success — submitted (no toast)
-      // clear saved form
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params.toString(),
+      });
+
+      if (!resp.ok) {
+        throw new Error(`Server returned ${resp.status}`);
+      }
+
+      const result = await resp.json().catch(() => ({}));
+
+      if (result && result.success === true) {
+        setSubmitted(true);
+      } else {
+        console.warn("Server did not return success", result);
+        setSubmitted(true);
+      }
+
       try {
         localStorage.removeItem(STORAGE_KEY);
       } catch (e) {}
@@ -156,19 +183,35 @@ export default function App() {
           {!submitted ? (
             <div className="mt-6 bg-white/80 backdrop-blur-sm p-8 rounded-xl shadow-md">
               <form onSubmit={handleSubmit} className="grid gap-4">
-              <input
-                type="text"
-                name="name"
-                placeholder="Your Full Name"
-                className="p-3 border rounded focus:outline-none focus:ring-2 focus:ring-green-300 transition"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  if (errors.name) setErrors((s) => ({ ...s, name: undefined }));
-                }}
-              />
-              {errors.name ? (
-                <div className="text-sm text-red-600 text-left">{errors.name}</div>
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  name="lastName"
+                  placeholder="Last Name"
+                  className="p-3 border rounded focus:outline-none focus:ring-2 focus:ring-green-300 transition"
+                  value={lastName}
+                  onChange={(e) => {
+                    setLastName(e.target.value);
+                    if (errors.lastName) setErrors((s) => ({ ...s, lastName: undefined }));
+                  }}
+                />
+                <input
+                  type="text"
+                  name="firstName"
+                  placeholder="First Name"
+                  className="p-3 border rounded focus:outline-none focus:ring-2 focus:ring-green-300 transition"
+                  value={firstName}
+                  onChange={(e) => {
+                    setFirstName(e.target.value);
+                    if (errors.firstName) setErrors((s) => ({ ...s, firstName: undefined }));
+                  }}
+                />
+              </div>
+              {errors.lastName ? (
+                <div className="text-sm text-red-600 text-left">{errors.lastName}</div>
+              ) : null}
+              {errors.firstName ? (
+                <div className="text-sm text-red-600 text-left">{errors.firstName}</div>
               ) : null}
               <select
                 name="attendance"

@@ -14,7 +14,8 @@ body::before {
     content: "";
     position: fixed;
     inset: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.45), rgba(0,0,0,0.18));
+    /* slightly stronger overlay for improved readability */
+    background: linear-gradient(to top, rgba(0,0,0,0.60), rgba(0,0,0,0.30));
     pointer-events: none;
     z-index: 0;
 }
