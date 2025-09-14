@@ -1,0 +1,44 @@
+/* Page background: use the image in `public/invitation-bg.jpg` */
+html, body, #root {
+    min-height: 100%;
+    background-image: url('/invitation-bg.jpg') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-attachment: fixed !important;
+    background-repeat: no-repeat !important;
+    background-color: transparent !important;
+}
+
+/* Fixed overlay (keeps content readable) */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.45), rgba(0,0,0,0.18));
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Heading clarity helpers */
+.invitation-hero .font-script {
+    color: #fff !important;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.6), 0 1px 2px rgba(0,0,0,0.4);
+    -webkit-text-stroke: 0.6px rgba(0,0,0,0.35);
+}
+
+.invitation-hero p, .invitation-hero .mt-4 {
+    color: rgba(255,255,255,0.95);
+    text-shadow: 0 1px 4px rgba(0,0,0,0.45);
+}
+
+/* Preserve the hero height and stacking context */
+.invitation-hero {
+    position: relative;
+    min-height: 100vh;
+}
+
+/* Ensure the app content sits above the overlay */
+.app-content {
+    position: relative;
+    z-index: 10;
+}

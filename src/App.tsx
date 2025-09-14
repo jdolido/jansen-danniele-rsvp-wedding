@@ -1,8 +1,45 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import "./invitation.css";
 
 export default function App() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [attendance, setAttendance] = useState<string>("");
+  const [guests, setGuests] = useState<number | "">("");
+  const [name, setName] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
+  // Validation errors (allow undefined so individual keys can be cleared)
+  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
+
+
+  // Persist form in localStorage
+  const STORAGE_KEY = "rsvp_form_v1";
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setName(parsed.name || "");
+        setAttendance(parsed.attendance || "");
+        setGuests(parsed.guests ?? 1);
+        setMessage(parsed.message || "");
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    const payload = { name, attendance, guests, message };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch (e) {
+      // ignore
+    }
+  }, [name, attendance, guests, message]);
+
+  // (toasts removed — using inline validation and alerts only)
 
   // Smooth scroll helper
   const smoothScroll = (id: string) => {
@@ -19,15 +56,19 @@ export default function App() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const form = e.target as HTMLFormElement;
-    const formData = new FormData(form);
+    // Basic validation (inline)
+    const nextErrors: { [k: string]: string } = {};
+    if (!name.trim()) nextErrors.name = "Please enter your full name.";
+    if (!attendance) nextErrors.attendance = "Please select whether you'll attend.";
+    if (attendance === "Yes" && (guests === "" || Number(guests) < 1)) nextErrors.guests = "Please provide the number of guests (minimum 1) when attending.";
 
-    const data = {
-      name: formData.get("name"),
-      attendance: formData.get("attendance"),
-      guests: formData.get("guests"),
-      message: formData.get("message"),
-    };
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      // validation errors are shown inline
+      return;
+    }
+
+    const data = { name, attendance, guests: guests === "" ? null : guests, message };
 
     try {
       setLoading(true);
@@ -40,7 +81,12 @@ export default function App() {
         },
       });
 
-      setSubmitted(true);
+  setSubmitted(true);
+  // success — submitted (no toast)
+      // clear saved form
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (e) {}
     } catch (error) {
       alert("There was an issue submitting your RSVP. Please try again.");
     } finally {
@@ -50,11 +96,11 @@ export default function App() {
 
 
   return (
-    <div className="font-sans text-gray-800">
+    <div className="app-content font-sans text-gray-800 relative z-10">
       {/* Sticky Top Navigation */}
       <nav className="fixed w-full bg-white bg-opacity-80 backdrop-blur-md shadow z-20">
         <div className="max-w-4xl mx-auto flex justify-between items-center p-4">
-          <div className="text-2xl font-script text-green-800">J & D</div>
+          <div className="text-2xl font-script text-green-800">Jansen & Danniele — RSVP</div>
           <div className="space-x-6">
             {["Home", "Details", "RSVP"].map((label) => (
               <button
@@ -72,9 +118,8 @@ export default function App() {
       {/* Hero Section */}
       <section
         id="home"
-        className="h-screen bg-[url('https://source.unsplash.com/1600x900/?wedding,green,blue')] bg-cover bg-center relative"
+        className="invitation-bg invitation-hero h-screen bg-cover bg-center relative"
       >
-        <div className="absolute inset-0 bg-gradient-to-t from-white/70 via-transparent to-white/70" />
         <div className="h-full flex flex-col items-center justify-center text-center px-4">
           <h1 className="font-script text-5xl md:text-7xl text-green-900">
             Jansen & Danniele
@@ -89,11 +134,11 @@ export default function App() {
         </div>
       </section>
 
-      {/* Details Section */}
-      <section id="details" className="py-20 bg-green-50">
-        <div className="max-w-3xl mx-auto text-center">
+  {/* Details Section */}
+  <section id="details" className="py-20 bg-transparent">
+        <div className="max-w-3xl mx-auto text-center bg-white/85 bg-opacity-80 backdrop-blur-sm p-8 rounded-xl">
           <h2 className="font-script text-4xl text-green-800">Our Day</h2>
-          <p className="mt-6 text-lg">
+          <p className="mt-6 text-lg text-green-800">
             December 29, 2025
             <br />
             Ceremony: 2:30 PM at St. Ferdinand Cathedral, Quezon Avenue, Lucena
@@ -104,56 +149,97 @@ export default function App() {
         </div>
       </section>
 
-      {/* RSVP Section */}
-      <section id="rsvp" className="py-20 bg-blue-50">
+  {/* RSVP Section */}
+  <section id="rsvp" className="py-20 bg-transparent">
         <div className="max-w-md mx-auto text-center">
           <h2 className="font-script text-4xl text-green-800">RSVP</h2>
           {!submitted ? (
-            <form onSubmit={handleSubmit} className="mt-6 grid gap-4">
+            <div className="mt-6 bg-white/80 backdrop-blur-sm p-8 rounded-xl shadow-md">
+              <form onSubmit={handleSubmit} className="grid gap-4">
               <input
                 type="text"
                 name="name"
                 placeholder="Your Full Name"
-                required
-                className="p-3 border rounded"
+                className="p-3 border rounded focus:outline-none focus:ring-2 focus:ring-green-300 transition"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (errors.name) setErrors((s) => ({ ...s, name: undefined }));
+                }}
               />
-              <select name="attendance" required className="p-3 border rounded">
+              {errors.name ? (
+                <div className="text-sm text-red-600 text-left">{errors.name}</div>
+              ) : null}
+              <select
+                name="attendance"
+                className="p-3 border rounded focus:outline-none focus:ring-2 focus:ring-green-300 transition"
+                value={attendance}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setAttendance(val);
+                  if (val !== "Yes") setGuests("");
+                  if (errors.attendance) setErrors((s) => ({ ...s, attendance: undefined }));
+                }}
+              >
                 <option value="">Will you attend?</option>
                 <option value="Yes">Yes</option>
                 <option value="No">No</option>
               </select>
-              <input
-                type="number"
-                name="guests"
-                placeholder="No. of Guests (incl. you)"
-                min="1"
-                className="p-3 border rounded"
-              />
+              {errors.attendance ? (
+                <div className="text-sm text-red-600 text-left">{errors.attendance}</div>
+              ) : null}
+              {attendance === 'Yes' ? (
+                <>
+                  <input
+                    type="number"
+                    name="guests"
+                    placeholder="No. of Guests (incl. you)"
+                    min={1}
+                    className="p-3 border rounded focus:outline-none focus:ring-2 focus:ring-green-300 transition"
+                    value={guests}
+                    onChange={(e) => {
+                      const v = e.target.value === '' ? '' : Number(e.target.value);
+                      setGuests(v);
+                      if (errors.guests) setErrors((s) => ({ ...s, guests: undefined }));
+                    }}
+                  />
+                  {errors.guests ? (
+                    <div className="text-sm text-red-600 text-left">{errors.guests}</div>
+                  ) : null}
+                </>
+              ) : null}
               <textarea
                 name="message"
                 rows={3}
                 placeholder="Message (optional)"
-                className="p-3 border rounded"
+                className="p-3 border rounded focus:outline-none focus:ring-2 focus:ring-green-300 transition"
+                value={message}
+                onChange={(e) => {
+                  setMessage(e.target.value);
+                  if (errors.message) setErrors((s) => ({ ...s, message: undefined }));
+                }}
               />
               <button
                 type="submit"
                 disabled={loading}
-                className={`mt-4 bg-green-400 hover:bg-green-500 text-white py-3 rounded-full flex items-center justify-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                className={`mt-4 justify-self-center w-auto min-w-[9rem] bg-green-400 hover:bg-green-500 text-white py-2 px-5 text-base rounded-full inline-flex items-center justify-center gap-3 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-300 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
                 {loading ? (
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                   </svg>
                 ) : null}
                 <span>{loading ? 'Submitting...' : 'Submit'}</span>
               </button>
-            </form>
+              </form>
+            </div>
           ) : (
             <p className="mt-6 text-green-700 text-xl">
               Thanks! We received your RSVP.
             </p>
           )}
+          {/* no toasts (inline errors only) */}
         </div>
       </section>
 
