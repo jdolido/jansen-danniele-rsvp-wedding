@@ -1,3 +1,11 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Typography: use Merriweather for body/headings and Great Vibes for script headings */
+html, body {
+	font-family: 'Merriweather', serif;
+}
+.font-script {
+	font-family: 'Great Vibes', cursive;
+}

@@ -9,27 +9,37 @@ html, body, #root {
     background-color: transparent !important;
 }
 
-/* Fixed overlay (keeps content readable) */
+/* Theme variables: Filipiñana palette (warm brown, cream, soft accents) */
+:root {
+    --filipi-brown-900: #3b2b22; /* deep brown */
+    --filipi-brown-700: #6b4f3f; /* warm brown */
+    --filipi-cream-100: #f6f0e8; /* page panel */
+    --filipi-cream-200: #efe7dd; /* subtle panel */
+    --filipi-accent: #a87f60; /* accent warm tan */
+    --filipi-accent-rgb: 168,127,96;
+    --filipi-white: #fffdfa;
+}
+
+/* Fixed warm overlay (keeps content readable and matches invitation tone) */
 body::before {
     content: "";
     position: fixed;
     inset: 0;
-    /* slightly stronger overlay for improved readability */
-    background: linear-gradient(to top, rgba(0,0,0,0.60), rgba(0,0,0,0.30));
+    background: linear-gradient(to top, rgba(59,43,34,0.55), rgba(239,231,221,0.10));
     pointer-events: none;
     z-index: 0;
 }
 
 /* Heading clarity helpers */
 .invitation-hero .font-script {
-    color: #fff !important;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.6), 0 1px 2px rgba(0,0,0,0.4);
-    -webkit-text-stroke: 0.6px rgba(0,0,0,0.35);
+    color: var(--filipi-brown-900) !important;
+    text-shadow: 0 2px 6px rgba(255,255,255,0.35);
+    -webkit-text-stroke: 0.4px rgba(255,255,255,0.6);
 }
 
 .invitation-hero p, .invitation-hero .mt-4 {
-    color: rgba(255,255,255,0.95);
-    text-shadow: 0 1px 4px rgba(0,0,0,0.45);
+    color: var(--filipi-brown-700);
+    text-shadow: none;
 }
 
 /* Preserve the hero height and stacking context */
@@ -43,3 +53,114 @@ body::before {
     position: relative;
     z-index: 10;
 }
+
+/* Theme helpers */
+.theme-panel {
+    background: linear-gradient(180deg, rgba(255,253,250,0.9), rgba(239,231,221,0.85));
+    border: 1px solid rgba(59,43,34,0.06);
+    color: var(--filipi-brown-900);
+}
+.theme-btn {
+    background: var(--filipi-accent);
+    color: var(--filipi-white);
+}
+.theme-text-muted {
+    color: var(--filipi-brown-700);
+}
+.theme-invitation-bg {
+    background-color: var(--filipi-cream-100);
+}
+
+/* Hero title sizing and spacing to match invitation feel */
+.invitation-hero .hero-title {
+    font-size: 3.25rem;
+    line-height: 0.82;
+    margin: 0;
+    color: var(--filipi-brown-900);
+    text-align: center;
+    letter-spacing: -0.02em;
+    transform: translateY(-6%);
+}
+@media (min-width: 640px) {
+    .invitation-hero .hero-title { font-size: 5.5rem; }
+}
+@media (min-width: 1024px) {
+    .invitation-hero .hero-title { font-size: 8rem; }
+}
+
+.invitation-hero .hero-date {
+    margin-top: 0.6rem;
+    font-size: 1.125rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--filipi-brown-700);
+    text-shadow: 0 2px 6px rgba(255,253,250,0.85), 0 1px 2px rgba(59,43,34,0.12);
+}
+
+/* Section headings (Details / RSVP) */
+.invitation-heading {
+    font-size: 2.25rem;
+    color: var(--filipi-brown-700);
+    margin-bottom: 0.75rem;
+    text-shadow: 0 2px 6px rgba(255,253,250,0.85), 0 1px 2px rgba(59,43,34,0.06);
+}
+
+/* Panel and button tweaks for invitation aesthetic */
+.theme-panel {
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 8px 30px rgba(59,43,34,0.06);
+}
+.theme-btn {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+    border-radius: 9999px;
+}
+
+/* Form input subtle styling */
+input[type="text"], input[type="number"], select, textarea {
+    color: var(--filipi-brown-900);
+}
+
+/* Override Tailwind's green focus rings with the theme accent */
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus,
+textarea:focus,
+.p-3:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 4px rgba(var(--filipi-accent-rgb), 0.12) !important;
+    border-color: rgba(var(--filipi-accent-rgb), 0.85) !important;
+}
+
+/* Focus-visible for accessibility */
+input[type="text"]:focus-visible,
+input[type="number"]:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.p-3:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 4px rgba(var(--filipi-accent-rgb), 0.18) !important;
+    border-color: rgba(var(--filipi-accent-rgb), 1) !important;
+}
+
+/* Themed scroll-to-top button */
+.scroll-top-btn {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--filipi-accent);
+    color: var(--filipi-white);
+    border-radius: 9999px;
+    box-shadow: 0 8px 24px rgba(59,43,34,0.12);
+    border: 2px solid rgba(255,253,250,0.9);
+    z-index: 40;
+    transition: transform 120ms ease, filter 120ms ease;
+}
+.scroll-top-btn:hover { transform: translateY(-2px); filter: brightness(0.96); }
+.scroll-top-btn:focus { outline: none; box-shadow: 0 0 0 6px rgba(var(--filipi-accent-rgb), 0.18); }

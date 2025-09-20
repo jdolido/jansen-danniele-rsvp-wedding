@@ -67,11 +67,14 @@ function _processRequest(params) {
   let rowsAppended = 0;
   if (sheet1) {
     try {
-      const displayName = (firstName && lastName) ? (firstName + ' ' + lastName) : (name || '');
-      const attendanceVal = params.attendance || '';
-      const guestsVal = (typeof params.guests !== 'undefined' && params.guests !== null && String(params.guests) !== '') ? params.guests : '';
-      const messageVal = params.message || '';
-      sheet1.appendRow([displayName, attendanceVal, guestsVal, '', messageVal, new Date()]);
+  const displayName = (firstName && lastName) ? (firstName + ' ' + lastName) : (name || '');
+  const attendanceVal = params.attendance || '';
+  const guestsVal = (typeof params.guests !== 'undefined' && params.guests !== null && String(params.guests) !== '') ? params.guests : '';
+  const highChairVal = params.highChair || '';
+  const highChairCountVal = (typeof params.highChairCount !== 'undefined' && params.highChairCount !== null && String(params.highChairCount) !== '') ? params.highChairCount : '';
+  const messageVal = params.message || '';
+  // Columns: A Name, B Attendance, C Guests, D High chair, E How many?, F Message, G Timestamp
+  sheet1.appendRow([displayName, attendanceVal, guestsVal, highChairVal, highChairCountVal, messageVal, new Date()]);
       rowsAppended = 1;
     } catch (err) {
       return { success: false, error: 'Append to Sheet1 failed', details: String(err) };
