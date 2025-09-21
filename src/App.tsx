@@ -159,6 +159,7 @@ export default function App() {
         <div className="h-full flex flex-col items-center justify-center text-center px-4">
             <h1 className="font-script hero-title">
               Jansen & Danniele
+              <span className="sub-hero">are Getting Married!</span>
             </h1>
             <p className="hero-date">December 29, 2025</p>
           <button
