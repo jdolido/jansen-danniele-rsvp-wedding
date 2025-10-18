@@ -269,7 +269,6 @@ export default function App() {
     <div className="app-content font-sans text-gray-800 relative z-10">
       <nav className="fixed w-full bg-white/60 backdrop-blur-md shadow z-20 theme-invitation-bg">
         <div className="max-w-4xl mx-auto flex justify-between items-center p-4">
-          <div className="text-2xl font-script text-4xl theme-text-muted">Jansen & Danniele</div>
           <div className="space-x-6">
             {['Home', 'Details', 'Venues', 'Entourage', 'Dress Code', 'Gifts', 'RSVP'].map((label) => {
               const slug = label.toLowerCase().replace(/\s+/g, '-');
@@ -291,22 +290,21 @@ export default function App() {
         <div className="max-w-4xl mx-auto text-center px-4">
           <h1 className="font-script hero-title anim" data-animate>Jansen & Danniele</h1>
           <p className="sub-hero anim" data-animate>are Getting Married!</p>
-          <p className="hero-date anim" data-animate>December 29, 2025</p>
-          <button onClick={() => smoothScroll("details")} className="mt-6 theme-btn hover:brightness-95 text-white py-2 px-6 rounded-full transition anim" data-animate>View Details</button>
+          <p className="hero-date anim" data-animate>12.29.2025</p>
         </div>
       </section>
 
       <section id="details" className="py-20 bg-transparent">
         <div className="max-w-3xl mx-auto text-center theme-panel p-8 rounded-xl">
-          <h2 className="font-script invitation-heading">Our Day</h2>
-          <p className="mt-6 text-lg theme-text-muted">December 29, 2025<br/>Ceremony: 2:30 PM at St. Ferdinand Cathedral, Quezon Avenue, Lucena City<br/>Reception: 5:30 PM at Potch Restaurant, Salinas, Lucena City</p>
+          <h2 className="font-script invitation-heading">You are Invited!</h2>
+          <p className="mt-6 text-lg theme-text-muted">With hearts full of love and gratitude,<br/><strong>Jansen</strong> and <strong>Danniele</strong> joyfully invite you to share in the celebration of their union —<br/>a day where love, faith, and family come together in timeless Filipino grace.</p>
         </div>
       </section>
 
       <section id="venues" className="py-12 bg-transparent">
         <div className="max-w-4xl mx-auto text-center theme-panel p-8 rounded-xl">
           <h2 className="font-script invitation-heading">Venues</h2>
-          <p className="mt-4 theme-text-muted">Ceremony: St. Ferdinand Cathedral — 2:30 PM<br/>Reception: Potch Restaurant — 5:30 PM</p>
+          <p className="mt-4 theme-text-muted">Ceremony: St. Ferdinand Cathedral<br/>Reception: Potch Restaurant</p>
 
           <div className="venue-gallery mt-6">
             <Gallery allowOpen={false} galleryId="venue-gallery" images={[
