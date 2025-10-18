@@ -331,9 +331,7 @@ export default function App() {
           </div>
 
           <div className="section-gallery mt-6">
-            <Gallery galleryId="dress-gallery" images={[
-              { src: '/assets/dress-guest-sketch.jpg', alt: 'Guest outfit ideas (illustration)' },
-            ]} />
+            <img src="/assets/dress-guest-sketch.jpg" alt="Guest outfit ideas (illustration)" className="rounded-lg gallery-img shadow-md mx-auto" loading="lazy" />
           </div>
         </div>
       </section>

@@ -14,6 +14,8 @@ html, body, #root {
     --accent: #0b7285; /* rich teal accent for buttons/links */
     --accent-rgb: 11,114,133;
     --accent-contrast: #ffffff;
+    /* approximate fixed nav height used to avoid content being hidden under the sticky nav */
+    --nav-safe-top: 4.5rem;
 }
 
 /* Fixed warm overlay (keeps content readable and matches invitation tone) */
@@ -35,14 +37,15 @@ html, body, #root {
 .invitation-hero {
     position: relative;
     min-height: 65vh;
-    /* leave extra space so hero content sits well below the fixed nav */
-    padding-top: 10rem;
+    /* leave extra space so hero content sits well below the fixed nav; uses a safe-top variable */
+    padding-top: calc(var(--nav-safe-top) + 4rem);
     padding-bottom: 4rem;
 }
 
 /* When jumping to anchors, offset by the nav height so sections are visible */
 section[id] {
-    scroll-margin-top: 7.5rem;
+    /* offset anchor jumps so content is not hidden under sticky nav */
+    scroll-margin-top: calc(var(--nav-safe-top) + 0.5rem);
 }
 
 /* Ensure the app content sits above the overlay */
@@ -97,6 +100,24 @@ section[id] {
 }
 @media (min-width: 1024px) {
     .invitation-hero .hero-title { font-size: 8rem; }
+}
+
+/* Mobile-specific adjustments: increase safe top and tighten heading sizes */
+@media (max-width: 640px) {
+    :root { --nav-safe-top: 6rem; }
+    .invitation-hero {
+        /* ensure hero title sits lower on small screens so the fixed nav won't overlap */
+        padding-top: calc(var(--nav-safe-top) + 1.5rem);
+        padding-bottom: 2.5rem;
+        min-height: 56vh;
+    }
+    .invitation-hero .hero-title {
+        font-size: 3.25rem; /* preserve readable size on phones */
+        line-height: 0.95;
+    }
+    .invitation-heading { font-size: 1.6rem; }
+    /* slightly larger scroll margin on very small screens */
+    section[id] { scroll-margin-top: calc(var(--nav-safe-top) + 0.75rem); }
 }
 
 .invitation-hero .hero-date {
