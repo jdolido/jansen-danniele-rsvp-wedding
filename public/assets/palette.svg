@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200" viewBox="0 0 400 200">
+  <rect x="10" y="10" width="180" height="80" fill="#cfe6e1" />
+  <rect x="210" y="10" width="180" height="80" fill="#9fbfb0" />
+  <rect x="10" y="110" width="180" height="80" fill="#9bb0c0" />
+  <rect x="210" y="110" width="180" height="80" fill="#cfe0ea" />
+  <text x="50%" y="98%" dominant-baseline="middle" text-anchor="middle" font-size="12" fill="#334155">Palette (placeholder)</text>
+</svg>

@@ -1,51 +1,48 @@
-/* Page background: use the image in `public/invitation-bg.jpg` */
+/* Page background: plain neutral background (no photo) */
 html, body, #root {
     min-height: 100%;
-    background-image: url('/invitation-bg.jpg') !important;
-    background-size: cover !important;
-    background-position: center !important;
-    background-attachment: fixed !important;
-    background-repeat: no-repeat !important;
-    background-color: transparent !important;
+    background-color: #f7f8fa; /* light neutral background similar to example */
+    background-image: none !important;
 }
 
-/* Theme variables: Filipiñana palette (warm brown, cream, soft accents) */
+/* Theme variables: higher-contrast palette for readability */
 :root {
-    --filipi-brown-900: #3b2b22; /* deep brown */
-    --filipi-brown-700: #6b4f3f; /* warm brown */
-    --filipi-cream-100: #f6f0e8; /* page panel */
-    --filipi-cream-200: #efe7dd; /* subtle panel */
-    --filipi-accent: #a87f60; /* accent warm tan */
-    --filipi-accent-rgb: 168,127,96;
-    --filipi-white: #fffdfa;
+    --base-text: #0f1724; /* very dark navy for high contrast */
+    --muted-text: #334155; /* slate for secondary text */
+    --panel-bg: rgba(255,255,255,0.95); /* bright panel to stand out over photo */
+    --panel-border: rgba(15,23,36,0.06);
+    --accent: #0b7285; /* rich teal accent for buttons/links */
+    --accent-rgb: 11,114,133;
+    --accent-contrast: #ffffff;
 }
 
 /* Fixed warm overlay (keeps content readable and matches invitation tone) */
-body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background: linear-gradient(to top, rgba(59,43,34,0.55), rgba(239,231,221,0.10));
-    pointer-events: none;
-    z-index: 0;
-}
+/* removed full-page overlay to match plain background style */
 
 /* Heading clarity helpers */
 .invitation-hero .font-script {
-    color: var(--filipi-brown-900) !important;
-    text-shadow: 0 2px 6px rgba(255,255,255,0.35);
-    -webkit-text-stroke: 0.4px rgba(255,255,255,0.6);
+    color: var(--base-text) !important;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.45);
+    -webkit-text-stroke: 0.2px rgba(255,255,255,0.15);
 }
 
 .invitation-hero p, .invitation-hero .mt-4 {
-    color: var(--filipi-brown-700);
+    color: var(--muted-text);
     text-shadow: none;
 }
 
 /* Preserve the hero height and stacking context */
 .invitation-hero {
     position: relative;
-    min-height: 100vh;
+    min-height: 65vh;
+    /* leave extra space so hero content sits well below the fixed nav */
+    padding-top: 10rem;
+    padding-bottom: 4rem;
+}
+
+/* When jumping to anchors, offset by the nav height so sections are visible */
+section[id] {
+    scroll-margin-top: 7.5rem;
 }
 
 /* Ensure the app content sits above the overlay */
@@ -56,30 +53,44 @@ body::before {
 
 /* Theme helpers */
 .theme-panel {
-    background: linear-gradient(180deg, rgba(255,253,250,0.9), rgba(239,231,221,0.85));
-    border: 1px solid rgba(59,43,34,0.06);
-    color: var(--filipi-brown-900);
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    color: var(--base-text);
 }
 .theme-btn {
-    background: var(--filipi-accent);
-    color: var(--filipi-white);
+    background: var(--accent);
+    color: var(--accent-contrast);
 }
 .theme-text-muted {
-    color: var(--filipi-brown-700);
+    color: var(--muted-text);
 }
 .theme-invitation-bg {
-    background-color: var(--filipi-cream-100);
+    background-color: rgba(255,255,255,0.9);
 }
+
+/* Dress Code specific styles */
+.dress-guidance .lead {
+    font-size: 1.05rem;
+    color: var(--base-text);
+    font-weight: 500;
+}
+.dress-callout {
+    background: linear-gradient(180deg, rgba(11,114,133,0.06), rgba(11,114,133,0.02));
+    border: 1px solid rgba(11,114,133,0.08);
+    color: var(--base-text);
+}
+.dress-guidance ul { margin-top: 0.5rem; }
+.dress-guidance .font-semibold { color: var(--base-text); }
 
 /* Hero title sizing and spacing to match invitation feel */
 .invitation-hero .hero-title {
     font-size: 3.25rem;
     line-height: 0.82;
     margin: 0;
-    color: var(--filipi-brown-900);
+    color: var(--base-text);
     text-align: center;
     letter-spacing: -0.02em;
-    transform: translateY(-6%);
+    /* removed upward translate to prevent clipping under sticky nav */
 }
 @media (min-width: 640px) {
     .invitation-hero .hero-title { font-size: 5.5rem; }
@@ -93,23 +104,23 @@ body::before {
     font-size: 1.125rem;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--filipi-brown-700);
-    text-shadow: 0 2px 6px rgba(255,253,250,0.85), 0 1px 2px rgba(59,43,34,0.12);
+    color: var(--muted-text);
+    text-shadow: 0 2px 6px rgba(255,255,255,0.85), 0 1px 2px rgba(0,0,0,0.06);
 }
 
 /* Section headings (Details / RSVP) */
 .invitation-heading {
     font-size: 2.25rem;
-    color: var(--filipi-brown-700);
+    color: var(--base-text);
     margin-bottom: 0.75rem;
-    text-shadow: 0 2px 6px rgba(255,253,250,0.85), 0 1px 2px rgba(59,43,34,0.06);
+    text-shadow: 0 2px 6px rgba(255,255,255,0.8), 0 1px 2px rgba(0,0,0,0.06);
 }
 
 /* Panel and button tweaks for invitation aesthetic */
 .theme-panel {
     padding: 2rem;
     border-radius: 1rem;
-    box-shadow: 0 8px 30px rgba(59,43,34,0.06);
+    box-shadow: 0 10px 40px rgba(2,6,23,0.08);
 }
 .theme-btn {
     padding-left: 1.25rem;
@@ -119,7 +130,7 @@ body::before {
 
 /* Form input subtle styling */
 input[type="text"], input[type="number"], select, textarea {
-    color: var(--filipi-brown-900);
+    color: var(--base-text);
 }
 
 /* Smaller script subtitle under hero title */
@@ -127,10 +138,10 @@ input[type="text"], input[type="number"], select, textarea {
     display: block;
     font-size: 1.2rem;
     margin-top: 0.15rem;
-    color: var(--filipi-brown-900);
+    color: var(--base-text);
     opacity: 1;
     letter-spacing: 0.02em;
-    text-shadow: 0 4px 12px rgba(59,43,34,0.6), 0 1px 2px rgba(255,253,250,0.6);
+    text-shadow: 0 4px 12px rgba(0,0,0,0.55), 0 1px 2px rgba(255,255,255,0.6);
 }
 @media (min-width: 640px) {
     .sub-hero { font-size: 1.6rem; }
@@ -146,8 +157,8 @@ select:focus,
 textarea:focus,
 .p-3:focus {
     outline: none !important;
-    box-shadow: 0 0 0 4px rgba(var(--filipi-accent-rgb), 0.12) !important;
-    border-color: rgba(var(--filipi-accent-rgb), 0.85) !important;
+    box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.12) !important;
+    border-color: rgba(var(--accent-rgb), 0.85) !important;
 }
 
 /* Focus-visible for accessibility */
@@ -157,8 +168,8 @@ select:focus-visible,
 textarea:focus-visible,
 .p-3:focus-visible {
     outline: none !important;
-    box-shadow: 0 0 0 4px rgba(var(--filipi-accent-rgb), 0.18) !important;
-    border-color: rgba(var(--filipi-accent-rgb), 1) !important;
+    box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.18) !important;
+    border-color: rgba(var(--accent-rgb), 1) !important;
 }
 
 /* Themed scroll-to-top button */
@@ -171,13 +182,23 @@ textarea:focus-visible,
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--filipi-accent);
-    color: var(--filipi-white);
+    background: var(--accent);
+    color: var(--accent-contrast);
     border-radius: 9999px;
-    box-shadow: 0 8px 24px rgba(59,43,34,0.12);
-    border: 2px solid rgba(255,253,250,0.9);
+    box-shadow: 0 8px 24px rgba(2,6,23,0.12);
+    border: 2px solid rgba(255,255,255,0.9);
     z-index: 40;
     transition: transform 120ms ease, filter 120ms ease;
 }
 .scroll-top-btn:hover { transform: translateY(-2px); filter: brightness(0.96); }
-.scroll-top-btn:focus { outline: none; box-shadow: 0 0 0 6px rgba(var(--filipi-accent-rgb), 0.18); }
+.scroll-top-btn:focus { outline: none; box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0.18); }
+
+/* Gallery helpers */
+.gallery-img { display: block; border-radius: 0.75rem; }
+.venue-gallery .gallery-img { border: 1px solid rgba(0,0,0,0.04); }
+.section-gallery .gallery-img { border: 1px solid rgba(0,0,0,0.04); }
+
+@media (max-width: 640px) {
+    .venue-gallery { grid-template-columns: 1fr !important; }
+    .venue-gallery img { height: auto !important; }
+}
