@@ -2,6 +2,19 @@ import { useEffect, useState, useRef } from "react";
 import "./invitation.css";
 
 type ImageItem = { src: string; alt?: string };
+type VenueDetail = {
+  key: string;
+  label: string;
+  title: string;
+  time: string;
+  address: string;
+  description: string;
+  mapEmbed: string;
+  googleLink: string;
+  wazeLink: string;
+  mapNote?: string;
+  tips: string[];
+};
 
 function Lightbox({ images, index, onClose, onPrev, onNext }: { images: ImageItem[]; index: number; onClose: () => void; onPrev: () => void; onNext: () => void; }) {
   useEffect(() => {
@@ -99,6 +112,11 @@ export default function App() {
     nodes.forEach(n => io.observe(n));
     return () => io.disconnect();
   }, []);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--font-scale', '1.12');
+    try { localStorage.removeItem('text_scale_v1'); } catch {}
+  }, []);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [attendance, setAttendance] = useState<string>("");
@@ -161,6 +179,43 @@ export default function App() {
       // ignore
     }
   }, [firstName, lastName, attendance, guests, highChair, highChairCount, message]);
+
+  const venues: VenueDetail[] = [
+    {
+      key: 'ceremony',
+      label: 'Ceremony',
+      title: 'St. Ferdinand Cathedral',
+      time: 'Processional starts at 2:00 PM • Kindly be seated by 1:30 PM',
+      address: 'Gonzaga St, San Vicente, Ilagan City, Isabela',
+      description: 'Our vows will be held in the historic cathedral beside the city plaza. Ushers will welcome you at the main doors along Gonzaga Street; side doors remain open for late arrivals.',
+      mapEmbed: 'https://www.google.com/maps?q=St.+Ferdinand+Cathedral,+Ilagan+City&output=embed',
+      googleLink: 'https://maps.google.com/?q=St.+Ferdinand+Cathedral,+Ilagan+City',
+      wazeLink: 'https://waze.com/ul?ll=17.1414,121.8897&navigate=yes&zoom=17',
+      mapNote: 'Pin drops at the cathedral’s plaza entrance. Guest parking is on the left-hand lot beside the parish office.',
+      tips: [
+        'Arrive 20 minutes early to sign the guest book and settle into the pews.',
+        'Dress code reminder: Filipiniana-inspired attire in joyful, light hues.',
+        'If arriving by tricycle, ask to be dropped at the plaza-facing doors for easiest access.',
+      ],
+    },
+    {
+      key: 'reception',
+      label: 'Reception',
+      title: 'Potch Restaurant & Banquet Hall',
+      time: 'Cocktails at 5:00 PM • Dinner program begins at 6:00 PM',
+      address: 'Rizal St, Poblacion, Ilagan City, Isabela',
+      description: 'Celebrate with us at Potch Restaurant, a 10-minute drive south of the cathedral. The banquet hall entrance is through the teal gate facing Rizal Street.',
+      mapEmbed: 'https://www.google.com/maps?q=Potch+Restaurant,+Ilagan+City&output=embed',
+      googleLink: 'https://maps.google.com/?q=Potch+Restaurant,+Ilagan+City',
+      wazeLink: 'https://waze.com/ul?ll=17.1348,121.8879&navigate=yes&zoom=17',
+      mapNote: 'Parking is available inside the compound; attendants will guide you to the covered slots behind the hall.',
+      tips: [
+        'Travel time from the cathedral is about 10 minutes without traffic—feel free to join the convoy leaving at 4:15 PM.',
+        'A welcome drink station opens at 5:00 PM; light snacks are ready for early arrivals.',
+        'If using rideshare, set the drop-off to “Potch Restaurant Main Gate” for the correct entrance.',
+      ],
+    },
+  ];
 
   const smoothScroll = (id: string) => {
     const target = document.getElementById(id);
@@ -302,19 +357,35 @@ export default function App() {
       </section>
 
       <section id="venues" className="py-12 bg-transparent">
-        <div className="max-w-4xl mx-auto text-center theme-panel p-8 rounded-xl">
-          <h2 className="font-script invitation-heading">Venues</h2>
-          <p className="mt-4 theme-text-muted">Ceremony: St. Ferdinand Cathedral<br/>Reception: Potch Restaurant</p>
-
-          <div className="venue-gallery mt-6">
-            <Gallery allowOpen={false} galleryId="venue-gallery" images={[
-              { src: '/assets/venue-mood1.svg', alt: 'Venue mood board' },
-              { src: '/assets/venue-sketch.svg', alt: 'Venue sketch' },
-              { src: '/assets/palette.svg', alt: 'Color palette' },
-            ]} />
+        <div className="max-w-5xl mx-auto space-y-8">
+          <div className="theme-panel p-8 rounded-xl text-center">
+            <h2 className="font-script invitation-heading">Venues</h2>
+            <p className="mt-4 theme-text-muted text-base">We’ll celebrate in two beautiful spots in Ilagan City. Use the guides below for arrival times, parking notes, and quick links to Google Maps and Waze.</p>
+            <p className="mt-2 text-sm theme-text-muted">Tap the map buttons or the embedded maps to open turn-by-turn directions on your phone.</p>
           </div>
 
-          <p className="mt-4 text-left theme-text-muted text-base">Directions and parking: street and lot parking are available near the reception venue. We recommend carpooling or rideshare for evening departures. If you need accessibility assistance or directions, contact us and we’ll help arrange transport.</p>
+          <div className="grid gap-8">
+            {venues.map((venue) => (
+              <VenueCard key={venue.key} venue={venue} />
+            ))}
+          </div>
+
+          <div className="theme-panel p-6 rounded-xl text-left">
+            <h3 className="font-semibold text-lg">Travel between the ceremony & reception</h3>
+            <p className="mt-2 theme-text-muted text-base">Expect a relaxing 3.2 km (about 10 minutes) drive heading south along Rizal Street. A family convoy leaves from the cathedral parking lot at <strong>4:15 PM</strong> for guests who wish to follow.</p>
+            <ul className="list-disc ml-5 mt-3 text-sm theme-text-muted space-y-1">
+              <li>Share the Waze link ahead of time so drivers can preload the route.</li>
+              <li>Parking attendants are on duty at Potch; look for the teal uniforms at the gate.</li>
+              <li>Need a ride? Message us by December 15 and we’ll reserve a seat in the shuttle van.</li>
+            </ul>
+            <div className="mt-6">
+              <Gallery allowOpen={false} galleryId="venue-gallery" images={[
+                { src: '/assets/venue-mood1.svg', alt: 'Cathedral aisle inspiration sketch' },
+                { src: '/assets/venue-sketch.svg', alt: 'Reception hall layout mockup' },
+                { src: '/assets/palette.svg', alt: 'Venue color palette' },
+              ]} />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -457,7 +528,6 @@ export default function App() {
     </div>
   );
 }
-
 function EntouragePage({ onBack }: { onBack: () => void }) {
   return (
     <div className="app-content font-sans text-gray-800 relative z-10">
@@ -489,6 +559,43 @@ function EntouragePage({ onBack }: { onBack: () => void }) {
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function VenueCard({ venue }: { venue: VenueDetail }) {
+  return (
+    <div className="theme-panel p-8 rounded-xl text-left">
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+        <div className="lg:w-1/2 space-y-4">
+          <span className="text-xs font-semibold uppercase tracking-[0.35em] text-[rgba(11,114,133,0.65)]">{venue.label}</span>
+          <h3 className="text-3xl font-script text-left text-slate-900">{venue.title}</h3>
+          <p className="text-sm font-semibold uppercase tracking-wide text-slate-600">{venue.time}</p>
+          <address className="not-italic theme-text-muted text-sm leading-relaxed">{venue.address}</address>
+          <p className="theme-text-muted text-base leading-relaxed">{venue.description}</p>
+          <ul className="list-disc ml-5 text-sm theme-text-muted space-y-1">
+            {venue.tips.map((tip) => (
+              <li key={tip}>{tip}</li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap gap-3 pt-2">
+            <a href={venue.googleLink} target="_blank" rel="noopener noreferrer" className="theme-btn px-4 py-2 rounded-full text-sm">Open Google Maps</a>
+            <a href={venue.wazeLink} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-full border border-dashed border-[rgba(11,114,133,0.35)] text-sm text-[rgba(11,114,133,0.85)]">Open in Waze</a>
+          </div>
+        </div>
+        <div className="lg:w-1/2 space-y-3">
+          <div className="map-frame rounded-xl">
+            <iframe
+              src={venue.mapEmbed}
+              title={`${venue.title} map`}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              allowFullScreen
+            />
+          </div>
+          {venue.mapNote ? <p className="text-xs theme-text-muted leading-relaxed">{venue.mapNote}</p> : null}
+        </div>
+      </div>
     </div>
   );
 }
