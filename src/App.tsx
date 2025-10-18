@@ -287,6 +287,7 @@ export default function App() {
       </nav>
 
       <section id="home" className="invitation-hero py-24" data-animate>
+        <div className="hero-ribbon" aria-hidden="true"></div>
         <div className="max-w-4xl mx-auto text-center px-4">
           <h1 className="font-script hero-title anim" data-animate>Jansen & Danniele</h1>
           <p className="sub-hero anim" data-animate>are Getting Married!</p>

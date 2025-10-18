@@ -12,10 +12,18 @@ html, body, #root {
     --panel-bg: rgba(255,255,255,0.95); /* bright panel to stand out over photo */
     --panel-border: rgba(15,23,36,0.06);
     --accent: #0b7285; /* rich teal accent for buttons/links */
+    --accent-2: #c77d4a; /* warm complimentary accent (soft gold/copper) */
+    --accent-gradient: linear-gradient(90deg, rgba(11,114,133,1), rgba(199,125,74,0.95));
     --accent-rgb: 11,114,133;
     --accent-contrast: #ffffff;
     /* approximate fixed nav height used to avoid content being hidden under the sticky nav */
     --nav-safe-top: 4.5rem;
+    --motif-fill: rgba(11,114,133,0.10);
+    --motif-accent: #0b7285;
+    /* new controls */
+    --panel-accent-width: 6px; /* change to 0 for no accent */
+    --panel-accent-opacity: 0.95; /* opacity for accent bar */
+    --heading-gradient: linear-gradient(90deg, rgba(11,114,133,1), rgba(199,125,74,0.9));
 }
 
 /* Fixed warm overlay (keeps content readable and matches invitation tone) */
@@ -60,6 +68,64 @@ section[id] {
     border: 1px solid var(--panel-border);
     color: var(--base-text);
 }
+
+/* Filipiniana decorative motifs on panels (subtle corner flowers) */
+.theme-panel {
+    position: relative; /* for pseudo element placement */
+}
+.theme-panel::before,
+.theme-panel::after {
+    content: '';
+    position: absolute;
+    width: 92px;
+    height: 92px;
+    pointer-events: none;
+    background-repeat: no-repeat;
+    background-size: contain;
+    opacity: 0.92;
+}
+.theme-panel::before {
+    left: -36px;
+    top: -36px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 120'><path d='M10 100 A90 90 0 0 1 190 100 L100 100 Z' fill='%230b7285' fill-opacity='0.08'/><g stroke='%230b7285' stroke-opacity='0.18' stroke-width='2' stroke-linecap='round'><line x1='100' y1='100' x2='20' y2='40'/><line x1='100' y1='100' x2='40' y2='34'/><line x1='100' y1='100' x2='60' y2='30'/><line x1='100' y1='100' x2='80' y2='28'/><line x1='100' y1='100' x2='100' y2='28'/><line x1='100' y1='100' x2='120' y2='28'/><line x1='100' y1='100' x2='140' y2='30'/><line x1='100' y1='100' x2='160' y2='34'/><line x1='100' y1='100' x2='180' y2='40'/></g><rect x='94' y='96' width='12' height='18' rx='3' fill='%230b7285' fill-opacity='0.18'/></svg>");
+}
+.theme-panel::after {
+    right: -36px;
+    bottom: -36px;
+    transform: rotate(180deg);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 120'><path d='M10 100 A90 90 0 0 1 190 100 L100 100 Z' fill='%230b7285' fill-opacity='0.08'/><g stroke='%230b7285' stroke-opacity='0.18' stroke-width='2' stroke-linecap='round'><line x1='100' y1='100' x2='20' y2='40'/><line x1='100' y1='100' x2='40' y2='34'/><line x1='100' y1='100' x2='60' y2='30'/><line x1='100' y1='100' x2='80' y2='28'/><line x1='100' y1='100' x2='100' y2='28'/><line x1='100' y1='100' x2='120' y2='28'/><line x1='100' y1='100' x2='140' y2='30'/><line x1='100' y1='100' x2='160' y2='34'/><line x1='100' y1='100' x2='180' y2='40'/></g><rect x='94' y='96' width='12' height='18' rx='3' fill='%230b7285' fill-opacity='0.18'/></svg>");
+}
+
+/* decorative patterned heading underline to evoke woven textures */
+.invitation-heading {
+    position: relative;
+}
+.invitation-heading::after {
+    content: '';
+    display: block;
+    height: 8px;
+    width: 140px;
+    margin: 0.6rem auto 0;
+    background-image: repeating-linear-gradient(90deg, rgba(11,114,133,0.12) 0 6px, rgba(11,114,133,0.04) 6px 12px);
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(11,114,133,0.02);
+}
+
+/* subtle ribbon behind hero title to give a formal invite feel */
+.invitation-hero { overflow: visible; }
+.invitation-hero .hero-ribbon {
+    position: absolute;
+    left: 50%;
+    top: 18%;
+    transform: translateX(-50%);
+    width: 46%;
+    height: 56px;
+    border-radius: 12px;
+    background: linear-gradient(90deg, rgba(11,114,133,0.06), rgba(11,114,133,0.03));
+    filter: blur(0.3px);
+    z-index: 1;
+}
+.invitation-hero .hero-title { position: relative; z-index: 2; }
 .theme-btn {
     background: var(--accent);
     color: var(--accent-contrast);
@@ -69,6 +135,49 @@ section[id] {
 }
 .theme-invitation-bg {
     background-color: rgba(255,255,255,0.9);
+}
+
+/* Navigation accents */
+nav.fixed {
+    border-bottom: 1px solid rgba(2,6,23,0.04);
+    background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(255,255,255,0.82));
+}
+nav .max-w-4xl { align-items: center; }
+nav .font-script { color: var(--base-text); font-weight: 600; letter-spacing: -0.02em; }
+nav .space-x-6 button { background: transparent; border: none; padding: 6px 8px; color: var(--muted-text); font-weight: 600; transition: color 180ms ease, transform 160ms ease; }
+nav .space-x-6 button:hover { color: var(--accent); transform: translateY(-2px); }
+
+/* add a small accent bar to panels for visual depth */
+.theme-panel { position: relative; overflow: visible; }
+.theme-panel::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: var(--panel-accent-width); border-top-left-radius: 12px; border-bottom-left-radius: 12px; background: linear-gradient(180deg, rgba(11,114,133,var(--panel-accent-opacity)), rgba(199,125,74,0.85)); box-shadow: 0 6px 18px rgba(11,114,133,0.06); }
+
+/* headings with gentle gradient and subtle shine */
+.invitation-heading { background: var(--heading-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+
+/* richer button hover */
+.theme-btn { background-image: var(--accent-gradient); background-size: 200% 100%; transition: transform 160ms ease, box-shadow 160ms ease, background-position 260ms ease; box-shadow: 0 8px 28px rgba(11,114,133,0.14); }
+.theme-btn:hover { background-position: 100% 0; transform: translateY(-3px) scale(1.01); box-shadow: 0 18px 44px rgba(11,114,133,0.12); }
+
+/* badges upgraded with soft gradient */
+.example-badges .badge { background: linear-gradient(90deg, rgba(11,114,133,0.08), rgba(199,125,74,0.06)); border: 1px solid rgba(11,114,133,0.08); color: var(--base-text); box-shadow: 0 6px 18px rgba(11,114,133,0.04); }
+
+/* subtle vignette to lift the center content */
+html::before { content: ''; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(60% 40% at 50% 40%, rgba(255,255,255,0) 0%, rgba(2,6,23,0.02) 60%, rgba(2,6,23,0.045) 100%); z-index: 0; }
+
+/* small decorative underline flourish for section headings */
+.invitation-heading::after { height: 10px; width: 160px; margin-top: 0.6rem; background-image: repeating-linear-gradient(90deg, rgba(11,114,133,0.14) 0 6px, rgba(199,125,74,0.06) 6px 12px); }
+
+/* Gold filigree separator between sections (except home) */
+section:not(#home)::before {
+    content: '';
+    display: block;
+    width: 120px;
+    height: 28px;
+    margin: 1rem auto 0.6rem;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='56' viewBox='0 0 240 56'><g fill='none' stroke='%23c79b62' stroke-opacity='0.95' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M8 28c30-18 60-18 80-2 20-16 50-16 80 2'/><path d='M232 28c-30 18-60 18-80 2-20 16-50 16-80-2'/></g></svg>");
+    background-repeat: no-repeat;
+    background-size: contain;
+    opacity: 0.95;
 }
 
 /* Dress Code specific styles */
