@@ -27,7 +27,7 @@ function Lightbox({ images, index, onClose, onPrev, onNext }: { images: ImageIte
   );
 }
 
-function Gallery({ images, galleryId }: { images: ImageItem[]; galleryId?: string }) {
+function Gallery({ images, galleryId, allowOpen = false }: { images: ImageItem[]; galleryId?: string; allowOpen?: boolean }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const idxRef = useRef(0);
@@ -42,8 +42,8 @@ function Gallery({ images, galleryId }: { images: ImageItem[]; galleryId?: strin
   }, []);
 
   useEffect(() => {
-    // autoplay only on mobile
-    if (isMobile) {
+    // autoplay only on mobile when opening is allowed
+    if (isMobile && allowOpen) {
       intervalRef.current = window.setInterval(() => {
         idxRef.current = (idxRef.current + 1) % images.length;
         setOpenIndex(idxRef.current);
@@ -56,9 +56,9 @@ function Gallery({ images, galleryId }: { images: ImageItem[]; galleryId?: strin
       setOpenIndex(null);
     }
     return () => { if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; } };
-  }, [isMobile, images.length]);
+  }, [isMobile, images.length, allowOpen]);
 
-  const open = (i: number) => { setOpenIndex(i); idxRef.current = i; };
+  const open = (i: number) => { if (!allowOpen) return; setOpenIndex(i); idxRef.current = i; };
   const close = () => setOpenIndex(null);
   const prev = () => setOpenIndex((v) => { if (v == null) return 0; return (v - 1 + images.length) % images.length; });
   const next = () => setOpenIndex((v) => { if (v == null) return 0; return (v + 1) % images.length; });
@@ -70,7 +70,7 @@ function Gallery({ images, galleryId }: { images: ImageItem[]; galleryId?: strin
         {images.map((img, i) => (
           <img key={i} src={img.src} alt={img.alt || ''} loading="lazy" className={`carousel-img ${openIndex === i ? 'active' : ''}`} onClick={() => open(i)} />
         ))}
-        {openIndex !== null && <Lightbox images={images} index={openIndex} onClose={close} onPrev={prev} onNext={next} />}
+        {allowOpen && openIndex !== null && <Lightbox images={images} index={openIndex} onClose={close} onPrev={prev} onNext={next} />}
       </div>
     );
   }
@@ -80,7 +80,7 @@ function Gallery({ images, galleryId }: { images: ImageItem[]; galleryId?: strin
       {images.map((img, i) => (
         <img key={i} src={img.src} alt={img.alt || ''} loading="lazy" className="rounded-lg gallery-img shadow-md" onClick={() => open(i)} />
       ))}
-      {openIndex !== null && <Lightbox images={images} index={openIndex} onClose={close} onPrev={prev} onNext={next} />}
+      {allowOpen && openIndex !== null && <Lightbox images={images} index={openIndex} onClose={close} onPrev={prev} onNext={next} />}
     </div>
   );
 }
@@ -117,8 +117,8 @@ export default function App() {
   const [giftSaved, setGiftSaved] = useState(false);
   const [copied, setCopied] = useState<Record<string, boolean>>({});
 
-  // Lightbox state for the dress image (so clicking the image maximizes it)
-  const [dressOpenIndex, setDressOpenIndex] = useState<number | null>(null);
+  // Modal state for the dress image (so clicking the image maximizes it)
+  const [dressModalOpen, setDressModalOpen] = useState(false);
 
   // Simple hash-based route: '' or 'home' for main site, 'entourage' for separate page
   const initialRoute = (window.location.hash || '').replace('#/', '').replace('#', '') || 'home';
@@ -308,7 +308,7 @@ export default function App() {
           <p className="mt-4 theme-text-muted">Ceremony: St. Ferdinand Cathedral — 2:30 PM<br/>Reception: Potch Restaurant — 5:30 PM</p>
 
           <div className="venue-gallery mt-6">
-            <Gallery galleryId="venue-gallery" images={[
+            <Gallery allowOpen={false} galleryId="venue-gallery" images={[
               { src: '/assets/venue-mood1.svg', alt: 'Venue mood board' },
               { src: '/assets/venue-sketch.svg', alt: 'Venue sketch' },
               { src: '/assets/palette.svg', alt: 'Color palette' },
@@ -357,11 +357,17 @@ export default function App() {
           </div>
 
             <div className="section-gallery mt-6">
-            <img src="/assets/dress-guest-sketch.jpg" alt="Guest outfit ideas (illustration)" className="rounded-lg gallery-img shadow-md mx-auto anim img-zoom cursor-zoom-in" loading="lazy" data-animate onClick={() => setDressOpenIndex(0)} />
-            {dressOpenIndex !== null && (
-              <Lightbox images={[{ src: '/assets/dress-guest-sketch.jpg', alt: 'Guest outfit ideas (illustration)' }]} index={dressOpenIndex} onClose={() => setDressOpenIndex(null)} onPrev={() => setDressOpenIndex(0)} onNext={() => setDressOpenIndex(0)} />
-            )}
+            <img src="/assets/dress-guest-sketch.jpg" alt="Guest outfit ideas (illustration)" className="rounded-lg gallery-img shadow-md mx-auto anim img-zoom cursor-zoom-in" loading="lazy" data-animate onClick={() => setDressModalOpen(true)} />
           </div>
+
+          {dressModalOpen && (
+            <div className="image-modal-overlay" onClick={() => setDressModalOpen(false)} role="dialog" aria-modal="true">
+              <div className="image-modal-content" onClick={(e) => e.stopPropagation()}>
+                <button className="image-modal-close" onClick={() => setDressModalOpen(false)} aria-label="Close">✕</button>
+                <img className="image-modal-img" src="/assets/dress-guest-sketch.jpg" alt="Guest outfit ideas (illustration)" />
+              </div>
+            </div>
+          )}
           <div className="mt-4 text-right text-sm personal-sign">With love, <span className="handwritten">Jansen &amp; Danniele</span></div>
         </div>
       </section>

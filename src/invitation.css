@@ -308,6 +308,21 @@ textarea:focus-visible,
 .lightbox-next { right: -1.2rem; top: 50%; transform: translateY(-50%); }
 .lightbox-close:focus, .lightbox-prev:focus, .lightbox-next:focus { outline: none; box-shadow: 0 0 0 6px rgba(var(--accent-rgb),0.12); }
 
+/* Dedicated Dress Code image modal (avoids interacting with other lightbox/galleries) */
+.image-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(2,6,23,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 1.5rem;
+}
+.image-modal-content { position: relative; max-width: 96vw; max-height: 96vh; }
+.image-modal-img { width: 100%; height: auto; max-height: 92vh; object-fit: contain; border-radius: 0.75rem; box-shadow: 0 30px 80px rgba(2,6,23,0.6); }
+.image-modal-close { position: absolute; top: -0.75rem; right: -0.75rem; background: rgba(255,255,255,0.95); border: none; padding: 0.35rem 0.6rem; border-radius: 0.4rem; cursor: pointer; }
+
 @media (max-width: 640px) {
     .venue-gallery { grid-template-columns: 1fr !important; }
     .venue-gallery img { height: auto !important; }
