@@ -85,6 +85,54 @@ section[id] {
 .dress-guidance ul { margin-top: 0.5rem; }
 .dress-guidance .font-semibold { color: var(--base-text); }
 
+/* Decorative divider between subtitle and section */
+.decorative-divider {
+    text-align: center;
+    color: rgba(15,23,36,0.45);
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+/* Badge helpers to show examples */
+.example-badges .badge {
+    display: inline-block;
+    padding: 0.35rem 0.6rem;
+    border-radius: 9999px;
+    background: rgba(11,114,133,0.06);
+    border: 1px solid rgba(11,114,133,0.08);
+    color: var(--base-text);
+    font-size: 0.8rem;
+}
+
+/* Personal sign-off with a handwritten feel */
+.personal-sign { color: var(--muted-text); }
+.personal-sign .handwritten {
+    font-family: 'Great Vibes', 'Segoe Script', 'Brush Script MT', 'Lucida Handwriting', cursive;
+    font-size: 1.08rem;
+    margin-left: 0.4rem;
+    color: var(--base-text);
+    letter-spacing: 0.02em;
+}
+/* Load a handwriting webfont for the signature (Great Vibes from Google Fonts) */
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
+
+/* Entrance animations */
+.anim { opacity: 0; transform: translateY(8px); transition: opacity 420ms ease, transform 420ms cubic-bezier(.2,.9,.3,1); }
+.anim.img-zoom { transform: scale(.98); transition: opacity 520ms ease, transform 520ms cubic-bezier(.2,.9,.3,1); }
+.in-view { opacity: 1; transform: translateY(0) scale(1); }
+.in-view.img-zoom { transform: scale(1); }
+
+/* subtle pop for badges */
+.badge { transform: translateY(6px); transition: transform 360ms cubic-bezier(.2,.9,.3,1), opacity 320ms ease; opacity: 0.92; }
+.in-view .badge { transform: translateY(0) scale(1); opacity: 1; }
+
+/* add a gentle hover for images */
+.gallery-img { transition: transform 420ms ease, box-shadow 320ms ease; }
+.gallery-img:hover { transform: translateY(-4px) scale(1.01); box-shadow: 0 14px 34px rgba(2,6,23,0.09); }
+
+/* Decorative flower specific animation and visibility tweaks */
+/* decorative flower removed - rules cleaned up */
+
 /* Hero title sizing and spacing to match invitation feel */
 .invitation-hero .hero-title {
     font-size: 3.25rem;
@@ -218,6 +266,47 @@ textarea:focus-visible,
 .gallery-img { display: block; border-radius: 0.75rem; }
 .venue-gallery .gallery-img { border: 1px solid rgba(0,0,0,0.04); }
 .section-gallery .gallery-img { border: 1px solid rgba(0,0,0,0.04); }
+
+/* Lightbox / modal styles (ensure the lightbox is fixed over the page) */
+.lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(2,6,23,0.6);
+    z-index: 9999;
+    padding: 2rem;
+}
+.lightbox-content {
+    position: relative;
+    max-width: 98vw;
+    max-height: 98vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.lightbox-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 0.75rem;
+    box-shadow: 0 30px 80px rgba(2,6,23,0.6);
+}
+.lightbox-close, .lightbox-prev, .lightbox-next {
+    position: absolute;
+    background: rgba(255,255,255,0.95);
+    border: none;
+    color: var(--base-text);
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.45rem;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(2,6,23,0.08);
+}
+.lightbox-close { top: -1rem; right: -1rem; }
+.lightbox-prev { left: -1.2rem; top: 50%; transform: translateY(-50%); }
+.lightbox-next { right: -1.2rem; top: 50%; transform: translateY(-50%); }
+.lightbox-close:focus, .lightbox-prev:focus, .lightbox-next:focus { outline: none; box-shadow: 0 0 0 6px rgba(var(--accent-rgb),0.12); }
 
 @media (max-width: 640px) {
     .venue-gallery { grid-template-columns: 1fr !important; }

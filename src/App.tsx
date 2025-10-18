@@ -86,6 +86,19 @@ function Gallery({ images, galleryId }: { images: ImageItem[]; galleryId?: strin
 }
 
 export default function App() {
+  // IntersectionObserver to add 'in-view' class for elements with data-animate
+  useEffect(() => {
+    const nodes = Array.from(document.querySelectorAll('[data-animate]')) as HTMLElement[];
+    if (!nodes.length) return;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((ent) => {
+        if (ent.isIntersecting) ent.target.classList.add('in-view');
+        else ent.target.classList.remove('in-view');
+      });
+    }, { threshold: 0.12 });
+    nodes.forEach(n => io.observe(n));
+    return () => io.disconnect();
+  }, []);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [attendance, setAttendance] = useState<string>("");
@@ -103,6 +116,9 @@ export default function App() {
   const [giftNote, setGiftNote] = useState<string>("");
   const [giftSaved, setGiftSaved] = useState(false);
   const [copied, setCopied] = useState<Record<string, boolean>>({});
+
+  // Lightbox state for the dress image (so clicking the image maximizes it)
+  const [dressOpenIndex, setDressOpenIndex] = useState<number | null>(null);
 
   // Simple hash-based route: '' or 'home' for main site, 'entourage' for separate page
   const initialRoute = (window.location.hash || '').replace('#/', '').replace('#', '') || 'home';
@@ -173,6 +189,9 @@ export default function App() {
       alert("Unable to copy to clipboard.");
     }
   };
+
+  // small set of badge examples for Dress Code (used with staggered animation)
+  const dressBadges = ['Filipiniana', 'Puffed Sleeves', 'Barong', 'Pastels', 'Floral Pins'];
 
   const GIFT_KEY = "gift_intent_v1";
   const saveGiftIntent = () => {
@@ -267,12 +286,12 @@ export default function App() {
         </div>
       </nav>
 
-      <section id="home" className="invitation-hero py-24">
+      <section id="home" className="invitation-hero py-24" data-animate>
         <div className="max-w-4xl mx-auto text-center px-4">
-          <h1 className="font-script hero-title">Jansen & Danniele</h1>
-          <p className="sub-hero">are Getting Married!</p>
-          <p className="hero-date">December 29, 2025</p>
-          <button onClick={() => smoothScroll("details")} className="mt-6 theme-btn hover:brightness-95 text-white py-2 px-6 rounded-full transition">View Details</button>
+          <h1 className="font-script hero-title anim" data-animate>Jansen & Danniele</h1>
+          <p className="sub-hero anim" data-animate>are Getting Married!</p>
+          <p className="hero-date anim" data-animate>December 29, 2025</p>
+          <button onClick={() => smoothScroll("details")} className="mt-6 theme-btn hover:brightness-95 text-white py-2 px-6 rounded-full transition anim" data-animate>View Details</button>
         </div>
       </section>
 
@@ -303,18 +322,25 @@ export default function App() {
       <section id="dress-code" className="py-12 bg-transparent">
         <div className="max-w-4xl mx-auto text-center theme-panel p-8 rounded-xl">
           <h2 className="font-script invitation-heading">Dress Code</h2>
-        
+          <div className="text-sm text-muted italic">Soft, festive, and traditionally inspired</div>
+
+          <div className="mt-4 decorative-divider" aria-hidden="true">— ✶ —</div>
           <div className="mt-6 text-left theme-text-muted dress-guidance">
             <p className="lead">We invite you to celebrate with dress that honors Filipino tradition — light, elegant, and festive.</p>
 
-            <div className="dress-callout mt-4 p-4 rounded-md">
+              <div className="dress-callout mt-4 p-4 rounded-md anim" data-animate>
               <p className="mb-1"><strong>Guests are warmly encouraged to attend in Filipino-themed formal attire.</strong></p>
               <p className="mb-0">Ladies: Filipiniana or puffed-sleeved dress/top — Gentlemen: Traditional Barong or Polo.</p>
             </div>
 
             <div className="mt-4">
               <p className="mb-2">We'd love to see you in any happy or pastel color — please avoid Black or White tops so photos stay soft and cohesive.</p>
-              <ul className="list-disc ml-5">
+              <div className="flex flex-wrap gap-2 mt-3 example-badges" data-animate>
+                {dressBadges.map((b, i) => (
+                  <span key={b} className="badge anim" style={{ transitionDelay: `${i * 80}ms` }}>{b}</span>
+                ))}
+              </div>
+              <ul className="list-disc ml-5 mt-3">
                 <li><strong>Recommended fabrics:</strong> piña, silk blends, organza, lightweight linen.</li>
                 <li><strong>Accessories:</strong> delicate jewelry, floral pins, and traditional touches are encouraged.</li>
                 <li><strong>Footwear:</strong> dress shoes, wedges, or elegant flats for outdoor comfort.</li>
@@ -330,9 +356,13 @@ export default function App() {
             </div>
           </div>
 
-          <div className="section-gallery mt-6">
-            <img src="/assets/dress-guest-sketch.jpg" alt="Guest outfit ideas (illustration)" className="rounded-lg gallery-img shadow-md mx-auto" loading="lazy" />
+            <div className="section-gallery mt-6">
+            <img src="/assets/dress-guest-sketch.jpg" alt="Guest outfit ideas (illustration)" className="rounded-lg gallery-img shadow-md mx-auto anim img-zoom cursor-zoom-in" loading="lazy" data-animate onClick={() => setDressOpenIndex(0)} />
+            {dressOpenIndex !== null && (
+              <Lightbox images={[{ src: '/assets/dress-guest-sketch.jpg', alt: 'Guest outfit ideas (illustration)' }]} index={dressOpenIndex} onClose={() => setDressOpenIndex(null)} onPrev={() => setDressOpenIndex(0)} onNext={() => setDressOpenIndex(0)} />
+            )}
           </div>
+          <div className="mt-4 text-right text-sm personal-sign">With love, <span className="handwritten">Jansen &amp; Danniele</span></div>
         </div>
       </section>
 
