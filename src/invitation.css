@@ -460,7 +460,7 @@ textarea:focus-visible,
 }
 
 /* pull the first section closer to the hero date */
-#details { margin-top: -3rem; }
+#details { margin-top: -6.6rem; }
 @media (min-width: 768px) {
-    #details { margin-top: -4rem; }
+    #details { margin-top: -7.6rem; }
 }

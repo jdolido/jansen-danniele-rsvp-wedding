@@ -35,12 +35,6 @@ export default function App() {
   const [message, setMessage] = useState<string>("");
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
 
-  const [giftName, setGiftName] = useState<string>("");
-  const [giftAmount, setGiftAmount] = useState<string>("");
-  const [giftNote, setGiftNote] = useState<string>("");
-  const [giftSaved, setGiftSaved] = useState(false);
-  const [copied, setCopied] = useState<Record<string, boolean>>({});
-
   const [dressModalOpen, setDressModalOpen] = useState(false);
   const [generatedSketches, setGeneratedSketches] = useState<Record<string, string>>({});
   const navContainerRef = useRef<HTMLDivElement | null>(null);
@@ -288,52 +282,68 @@ export default function App() {
     }
   };
 
-  const copyToClipboard = async (key: string, text: string) => {
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        const t = document.createElement("textarea");
-        t.value = text;
-        document.body.appendChild(t);
-        t.select();
-        document.execCommand("copy");
-        document.body.removeChild(t);
-      }
-      setCopied((s) => ({ ...s, [key]: true }));
-      setTimeout(() => setCopied((s) => ({ ...s, [key]: false })), 2000);
-    } catch (e) {
-      alert("Unable to copy to clipboard.");
-    }
-  };
-
   const dressBadges = ['Filipiniana', 'Puffed Sleeves', 'Barong', 'Pastels', 'Floral Pins'];
 
-  const GIFT_KEY = "gift_intent_v1";
-  const saveGiftIntent = () => {
-    const name = giftName.trim();
-    const amount = giftAmount.trim();
-    if (!name) {
-      alert("Please enter your name so we know who the gift is from.");
-      return;
-    }
-    if (!amount || isNaN(Number(amount))) {
-      alert("Please enter a valid amount.");
-      return;
-    }
+  const qrOptions = useMemo(() => ([
+    {
+      key: 'bpi',
+      title: 'BPI QR • Danniele',
+      description: 'Scan this BPI QR using your BPI banking app and confirm the recipient name before sending.',
+      src: '/assets/bpi-qr-danniele.png',
+      filename: 'bpi-qr-danniele.png',
+    },
+    {
+      key: 'gcash',
+      title: 'GCash QR • Danniele',
+      description: 'Use your GCash app to scan and confirm the number ends with 4487 before you finalize the transfer.',
+      src: '/assets/gcash-qr-danniele.png',
+      filename: 'gcash-qr-danniele.png',
+    },
+  ]), []);
+
+  const [qrStatus, setQrStatus] = useState<Record<string, 'saving' | 'saved' | 'error'>>({});
+
+  const downloadQr = useCallback(async (key: string, src: string, filename: string) => {
+    setQrStatus((prev) => ({ ...prev, [key]: 'saving' }));
+    const absoluteUrl = src.startsWith('http') ? src : new URL(src, window.location.origin).toString();
     try {
-      const raw = localStorage.getItem(GIFT_KEY);
-      const existing = raw ? JSON.parse(raw) : [];
-      const entry = { name, amount: Number(amount), note: giftNote || null, date: new Date().toISOString() };
-      existing.push(entry);
-      localStorage.setItem(GIFT_KEY, JSON.stringify(existing));
-      setGiftSaved(true);
-      setTimeout(() => setGiftSaved(false), 3000);
-    } catch (e) {
-      console.error(e);
-      alert("Unable to save gift intent locally.");
+      const resp = await fetch(absoluteUrl);
+      if (!resp.ok) throw new Error(`Failed to fetch QR (${resp.status})`);
+      const blob = await resp.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = filename;
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1200);
+      setQrStatus((prev) => ({ ...prev, [key]: 'saved' }));
+      window.setTimeout(() => {
+        setQrStatus((prev) => {
+          if (prev[key] !== 'saved') return prev;
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+      }, 4000);
+    } catch (err) {
+      const opened = window.open(absoluteUrl, '_blank', 'noopener');
+      if (!opened) {
+        alert('Please long press or take a screenshot of the QR code to save it to your device.');
+      }
+      setQrStatus((prev) => ({ ...prev, [key]: 'error' }));
+      window.setTimeout(() => {
+        setQrStatus((prev) => {
+          if (prev[key] !== 'error') return prev;
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+      }, 5000);
     }
-  };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -530,42 +540,37 @@ export default function App() {
       <section id="gifts" className="py-12 bg-transparent">
         <div className="max-w-3xl mx-auto text-center theme-panel p-8 rounded-xl">
           <h2 className="font-script invitation-heading">Gifts</h2>
-          <p className="mt-2 theme-text-muted">Your presence is the greatest gift — but if you'd like to offer a monetary gift or use our registry, here are secure options and etiquette notes.</p>
+          <p className="mt-2 theme-text-muted">With all that we have, we've been truly blessed. Your presence and prayers are all that we request. But if you desire to give nonetheless, monetary gift is one we suggest.</p>
 
-          <div className="mt-6 grid gap-4 text-left">
-            <div>
-              <h3 className="font-semibold">Bank Transfer</h3>
-              <p className="theme-text-muted">Account Name: Jansen & Danniele<br/>Account No: 1234-5678-9012 (Bank Name)</p>
-              <div className="mt-2 flex gap-3">
-                <button onClick={() => copyToClipboard('bank-account', 'Account Name: Jansen & Danniele\nAccount No: 1234-5678-9012 (Bank Name)')} className="theme-btn px-3 py-2 rounded">Copy details</button>
-                <button onClick={() => copyToClipboard('bank-account-no', '123456789012')} className="px-3 py-2 border rounded">Copy account no.</button>
-                {copied['bank-account'] ? <span className="ml-2 text-sm text-green-600">Copied!</span> : null}
-              </div>
+          <div className="mt-6 grid gap-6 text-left">
+            <div className="grid gap-6 md:grid-cols-2">
+              {qrOptions.map((qr) => {
+                const status = qrStatus[qr.key];
+                return (
+                  <div key={qr.key} className="theme-panel bg-white/80 p-6 rounded-xl text-center">
+                    <h3 className="font-semibold text-lg">{qr.title}</h3>
+                    <p className="mt-2 text-sm theme-text-muted">{qr.description}</p>
+                    <img src={qr.src} alt={`${qr.title} code`} className="mt-4 w-full max-w-xs mx-auto rounded-lg shadow-md" loading="lazy" />
+                    <div className="mt-4 flex flex-col items-center gap-2">
+                      <button
+                        onClick={() => downloadQr(qr.key, qr.src, qr.filename)}
+                        className="theme-btn px-4 py-2 rounded-full"
+                        disabled={status === 'saving'}
+                      >
+                        {status === 'saving' ? 'Preparing download…' : 'Save QR to device'}
+                      </button>
+                      {status === 'saved' ? (
+                        <span className="text-xs text-green-600">Saved! Check your downloads folder.</span>
+                      ) : null}
+                      {status === 'error' ? (
+                        <span className="text-xs text-rose-600">Opened the QR in a new tab so you can save it manually.</span>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
-            <div>
-              <h3 className="font-semibold">GCash / Mobile Wallet</h3>
-              <p className="theme-text-muted">Phone: +63 912 345 6789 (GCash)</p>
-              <div className="mt-2 flex gap-3">
-                <button onClick={() => copyToClipboard('gcash', '+639123456789')} className="theme-btn px-3 py-2 rounded">Copy number</button>
-                {copied['gcash'] ? <span className="ml-2 text-sm text-green-600">Copied!</span> : null}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-semibold">Let us know (optional)</h3>
-              <p className="theme-text-muted">Tell us you sent a gift so we can properly thank you. Use the local "Save gift note" box or include your name in the transfer reference.</p>
-              <div className="mt-3 grid sm:grid-cols-3 gap-3">
-                <input value={giftName} onChange={(e) => setGiftName(e.target.value)} className="p-3 border rounded" placeholder="Your Name" />
-                <input value={giftAmount} onChange={(e) => setGiftAmount(e.target.value)} className="p-3 border rounded" placeholder="Amount (e.g. 1500)" />
-                <input value={giftNote} onChange={(e) => setGiftNote(e.target.value)} className="p-3 border rounded" placeholder="Note (optional)" />
-              </div>
-              <div className="mt-3 flex items-center gap-3">
-                <button onClick={saveGiftIntent} className="theme-btn px-4 py-2 rounded">Save gift note</button>
-                {giftSaved ? <span className="text-green-600">Saved locally</span> : null}
-              </div>
-              <p className="mt-2 text-sm theme-text-muted">Note: This only records an intent locally on your device. It does not send payments — choose a secure payment method above. For registry or third-party links, we recommend provider-hosted checkout (PayPal, Stripe, or registry services) for security and tracking.</p>
-            </div>
           </div>
         </div>
       </section>
