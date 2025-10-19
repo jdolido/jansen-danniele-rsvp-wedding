@@ -894,7 +894,7 @@ const ENTOURAGE_SECTIONS: EntourageSection[] = [
   },
   {
     key: 'maid-matron',
-    title: 'Maid / Matron of Honor',
+    title: 'Man of Honor',
     items: ['Jann Ylo C. Omaña'],
     groupHeading: 'Principal Party',
   },
