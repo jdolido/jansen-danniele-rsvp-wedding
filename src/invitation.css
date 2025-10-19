@@ -87,31 +87,6 @@ section[id] {
 }
 
 /* Filipiniana decorative motifs on panels (subtle corner flowers) */
-.theme-panel {
-    position: relative; /* for pseudo element placement */
-}
-.theme-panel::before,
-.theme-panel::after {
-    content: '';
-    position: absolute;
-    width: 92px;
-    height: 92px;
-    pointer-events: none;
-    background-repeat: no-repeat;
-    background-size: contain;
-    opacity: 0.92;
-}
-.theme-panel::before {
-    left: -36px;
-    top: -36px;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 120'><path d='M10 100 A90 90 0 0 1 190 100 L100 100 Z' fill='%230b7285' fill-opacity='0.08'/><g stroke='%230b7285' stroke-opacity='0.18' stroke-width='2' stroke-linecap='round'><line x1='100' y1='100' x2='20' y2='40'/><line x1='100' y1='100' x2='40' y2='34'/><line x1='100' y1='100' x2='60' y2='30'/><line x1='100' y1='100' x2='80' y2='28'/><line x1='100' y1='100' x2='100' y2='28'/><line x1='100' y1='100' x2='120' y2='28'/><line x1='100' y1='100' x2='140' y2='30'/><line x1='100' y1='100' x2='160' y2='34'/><line x1='100' y1='100' x2='180' y2='40'/></g><rect x='94' y='96' width='12' height='18' rx='3' fill='%230b7285' fill-opacity='0.18'/></svg>");
-}
-.theme-panel::after {
-    right: -36px;
-    bottom: -36px;
-    transform: rotate(180deg);
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 120'><path d='M10 100 A90 90 0 0 1 190 100 L100 100 Z' fill='%230b7285' fill-opacity='0.08'/><g stroke='%230b7285' stroke-opacity='0.18' stroke-width='2' stroke-linecap='round'><line x1='100' y1='100' x2='20' y2='40'/><line x1='100' y1='100' x2='40' y2='34'/><line x1='100' y1='100' x2='60' y2='30'/><line x1='100' y1='100' x2='80' y2='28'/><line x1='100' y1='100' x2='100' y2='28'/><line x1='100' y1='100' x2='120' y2='28'/><line x1='100' y1='100' x2='140' y2='30'/><line x1='100' y1='100' x2='160' y2='34'/><line x1='100' y1='100' x2='180' y2='40'/></g><rect x='94' y='96' width='12' height='18' rx='3' fill='%230b7285' fill-opacity='0.18'/></svg>");
-}
 
 /* decorative patterned heading underline to evoke woven textures */
 .invitation-heading {
@@ -402,6 +377,15 @@ textarea:focus-visible,
 .venue-gallery .gallery-img { border: 1px solid rgba(0,0,0,0.04); }
 .section-gallery .gallery-img { border: 1px solid rgba(0,0,0,0.04); }
 
+.nav-links { scrollbar-width: none; }
+.nav-links::-webkit-scrollbar { display: none; }
+    .nav-container { position: relative; }
+    .nav-gradient { position: absolute; top: 0; bottom: 0; width: 32px; pointer-events: none; transition: opacity 120ms ease; opacity: 0; }
+    .nav-gradient.left { left: 0; background: linear-gradient(90deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0)); }
+    .nav-gradient.right { right: 0; background: linear-gradient(270deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0)); }
+    .nav-container.show-left .nav-gradient.left { opacity: 1; }
+    .nav-container.show-right .nav-gradient.right { opacity: 1; }
+
 /* Simple mobile carousel for Gallery component */
 .gallery-carousel { position: relative; }
 .gallery-carousel .carousel-img { display: none; width: 100%; height: auto; border-radius: 0.75rem; box-shadow: 0 10px 24px rgba(2,6,23,0.06); }
@@ -476,7 +460,7 @@ textarea:focus-visible,
 }
 
 /* pull the first section closer to the hero date */
-#details { margin-top: -2.4rem; }
+#details { margin-top: -3rem; }
 @media (min-width: 768px) {
-    #details { margin-top: -3.4rem; }
+    #details { margin-top: -4rem; }
 }

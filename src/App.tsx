@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./invitation.css";
 
 type VenueDetail = {
@@ -43,6 +43,34 @@ export default function App() {
 
   const [dressModalOpen, setDressModalOpen] = useState(false);
   const [generatedSketches, setGeneratedSketches] = useState<Record<string, string>>({});
+  const navContainerRef = useRef<HTMLDivElement | null>(null);
+  const navScrollerRef = useRef<HTMLDivElement | null>(null);
+
+  const updateNavGradients = useCallback(() => {
+    const container = navContainerRef.current;
+    const scroller = navScrollerRef.current;
+    if (!container || !scroller) return;
+    const atStart = scroller.scrollLeft <= 1;
+    const atEnd = scroller.scrollLeft + scroller.clientWidth >= scroller.scrollWidth - 1;
+    const canScroll = scroller.scrollWidth > scroller.clientWidth + 2;
+    container.classList.toggle('show-left', canScroll && !atStart);
+    container.classList.toggle('show-right', canScroll && !atEnd);
+  }, []);
+
+  const syncNavToPageScroll = useCallback(() => {
+    const scroller = navScrollerRef.current;
+    if (!scroller) return;
+    const maxNavScroll = scroller.scrollWidth - scroller.clientWidth;
+    const scrollablePage = document.documentElement.scrollHeight - window.innerHeight;
+    if (maxNavScroll <= 0 || scrollablePage <= 0 || window.innerWidth >= 768) {
+      if (scroller.scrollLeft !== 0) scroller.scrollLeft = 0;
+      updateNavGradients();
+      return;
+    }
+    const progress = Math.min(1, Math.max(0, window.scrollY / scrollablePage));
+    scroller.scrollLeft = progress * maxNavScroll;
+    updateNavGradients();
+  }, [updateNavGradients]);
 
   // Simple hash-based route: '' or 'home' for main site, 'entourage' for separate page
   const initialRoute = (window.location.hash || '').replace('#/', '').replace('#', '') || 'home';
@@ -56,6 +84,31 @@ export default function App() {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
+
+  useEffect(() => {
+    updateNavGradients();
+    const scroller = navScrollerRef.current;
+    if (!scroller) return;
+    const handle = () => updateNavGradients();
+    scroller.addEventListener('scroll', handle, { passive: true });
+    window.addEventListener('resize', handle);
+    return () => {
+      scroller.removeEventListener('scroll', handle);
+      window.removeEventListener('resize', handle);
+    };
+  }, [route, updateNavGradients]);
+
+  useEffect(() => {
+    const onScroll = () => syncNavToPageScroll();
+    const onResize = () => syncNavToPageScroll();
+    syncNavToPageScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [syncNavToPageScroll]);
 
   // re-register fade-in observers whenever the rendered route changes
   useEffect(() => {
@@ -106,17 +159,14 @@ export default function App() {
       label: 'Ceremony',
       title: 'St. Ferdinand Cathedral',
       time: 'Processional starts at 2:00 PM • Kindly be seated by 1:30 PM',
-      address: 'Granja St, Lucena City, Quezon',
-      description: 'Our vows will be held in the heart of Lucena City. Enter through the cathedral doors along Granja Street—ushers will guide you to the reserved pews near the center aisle.',
+      address: 'Quezon Ave. St, Lucena City, Quezon',
+      description: 'Our vows will be held in the heart of Lucena City. Enter through the cathedral doors along Quezon Ave. Street—ushers will guide you to the reserved pews near the center aisle.',
       mapEmbed: 'https://www.google.com/maps?q=St.+Ferdinand+Cathedral,+Lucena+City&output=embed',
       googleLink: 'https://maps.google.com/?q=St.+Ferdinand+Cathedral,+Lucena+City',
       wazeLink: 'https://waze.com/ul?q=St.%20Ferdinand%20Cathedral%20Lucena&navigate=yes',
-      mapNote: 'The pin lands on the Granja Street frontage; limited paid parking is available beside the parish office and across the street near the plaza.',
+      mapNote: 'The pin lands on the Quezon Ave. Street frontage; limited paid parking is available beside the parish office and across the street near the plaza.',
       tips: [
-        'Arrive 20 minutes early to sign the guest book and settle comfortably inside the nave.',
-        'Dress code reminder: Filipiniana-inspired attire in joyful, light hues.',
-        'If arriving by jeepney or tricycle, ask to alight at the cathedral steps on Granja Street for the smoothest entry.',
-      ],
+        ],
     },
     {
       key: 'reception',
@@ -130,7 +180,6 @@ export default function App() {
       wazeLink: 'https://waze.com/ul?q=Potch%20Restaurant%20Grand%20Banquet%20Hall%20Lucena&navigate=yes',
       mapNote: 'On-site parking is available through the main gate; attendants will direct you to the covered slots behind the hall.',
       tips: [
-        'Travel time from the cathedral is about 20 minutes without traffic.',
         'A welcome drink station opens at 5:00 PM; light snacks and "tusok-tusok" are ready for early arrivals.',
       ],
       sketchSource: '/assets/potch-grand-banquet.jpg',
@@ -297,7 +346,11 @@ export default function App() {
     if (attendance === "Yes" && highChair === "Yes" && (highChairCount === "" || Number(highChairCount) < 1)) nextErrors.highChairCount = "Please provide how many high chairs you need.";
 
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
+    if (Object.keys(nextErrors).length > 0) {
+      const firstMessage = Object.values(nextErrors).find(Boolean);
+      if (firstMessage) alert(firstMessage);
+      return;
+    }
 
     const fullName = `${lastName.trim()}, ${firstName.trim()}`;
     const data = {
@@ -336,18 +389,34 @@ export default function App() {
     <div className="app-content font-sans text-gray-800 relative z-10">
       <nav className="fixed w-full bg-white/60 backdrop-blur-md shadow z-20 theme-invitation-bg">
         <div className="max-w-4xl mx-auto flex justify-between items-center p-4">
-          <div className="space-x-6">
+          <div ref={navContainerRef} className="nav-container relative w-full">
+            <div ref={navScrollerRef} className="nav-links flex gap-4 sm:gap-6 overflow-x-auto whitespace-nowrap py-1 px-1 sm:px-0">
             {['Home', 'Details', 'Venues', 'Dress Code', 'Gifts', 'RSVP', 'Entourage'].map((label) => {
               const slug = label.toLowerCase().replace(/\s+/g, '-');
               if (slug === 'entourage') {
                 return (
-                  <button key={label} onClick={() => { window.location.hash = '/entourage'; }} className="cursor-pointer hover:text-green-600">{label}</button>
+                  <button
+                    key={label}
+                    onClick={() => { window.location.hash = '/entourage'; }}
+                    className="cursor-pointer hover:text-green-600 flex-shrink-0 px-2"
+                  >
+                    {label}
+                  </button>
                 );
               }
               return (
-                <button key={label} onClick={() => { window.location.hash = ''; smoothScroll(slug); }} className="cursor-pointer hover:text-green-600">{label}</button>
+                <button
+                  key={label}
+                  onClick={() => { window.location.hash = ''; smoothScroll(slug); }}
+                  className="cursor-pointer hover:text-green-600 flex-shrink-0 px-2"
+                >
+                  {label}
+                </button>
               );
             })}
+          </div>
+            <div className="nav-gradient left" aria-hidden="true"></div>
+            <div className="nav-gradient right" aria-hidden="true"></div>
           </div>
         </div>
       </nav>
@@ -421,7 +490,7 @@ export default function App() {
 
               <div className="dress-callout mt-4 p-4 rounded-md anim" data-animate>
               <p className="mb-1"><strong>Guests are warmly encouraged to attend in Filipino-themed formal attire.</strong></p>
-              <p className="mb-0">Ladies: Filipiniana or puffed-sleeved dress/top — Gentlemen: Traditional Barong or Polo.</p>
+              <p className="mb-0"><b>Ladies:</b> Filipiniana or puffed-sleeved dress/top<br /><b>Gentlemen:</b> Traditional Barong or Polo.</p>
             </div>
 
             <div className="mt-4">
@@ -431,11 +500,6 @@ export default function App() {
                   <span key={b} className="badge anim" style={{ transitionDelay: `${i * 80}ms` }}>{b}</span>
                 ))}
               </div>
-              <ul className="list-disc ml-5 mt-3">
-                <li><strong>Recommended fabrics:</strong> piña, silk blends, organza, lightweight linen.</li>
-                <li><strong>Accessories:</strong> delicate jewelry, floral pins, and traditional touches are encouraged.</li>
-                <li><strong>Footwear:</strong> dress shoes, wedges, or elegant flats for outdoor comfort.</li>
-              </ul>
               <div className="mt-3">
                 <p className="font-semibold">Please avoid</p>
                 <ul className="list-disc ml-5">
@@ -509,33 +573,139 @@ export default function App() {
       <section id="rsvp" className="py-20 bg-transparent">
         <div className="max-w-md mx-auto text-center">
       <h2 className="font-script invitation-heading">RSVP</h2>
-      <p className="theme-text-muted">Please RSVP by <strong>December 1, 2025</strong>. Use the form below to confirm attendance, number of guests, and any dietary or accessibility needs.</p>
+      <p className="theme-text-muted">Please RSVP by <strong>December 1, 2025</strong>. Use the form below to confirm attendance, number of guests, and any high chair needs.</p>
           {!submitted ? (
             <div className="mt-6 theme-panel p-8 rounded-xl shadow-md">
               <form onSubmit={handleSubmit} className="grid gap-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <input type="text" name="lastName" placeholder="Last Name" className="p-3 border rounded" value={lastName} onChange={(e) => { setLastName(e.target.value); if (errors.lastName) setErrors((s) => ({ ...s, lastName: undefined })); }} />
-                  <input type="text" name="firstName" placeholder="First Name" className="p-3 border rounded" value={firstName} onChange={(e) => { setFirstName(e.target.value); if (errors.firstName) setErrors((s) => ({ ...s, firstName: undefined })); }} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    name="lastName"
+                    placeholder="Last Name"
+                    className={`p-3 border rounded ${errors.lastName ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+                    value={lastName}
+                    onChange={(e) => { setLastName(e.target.value); if (errors.lastName) setErrors((s) => ({ ...s, lastName: undefined })); }}
+                    aria-invalid={Boolean(errors.lastName)}
+                    title={errors.lastName || undefined}
+                  />
+                  <input
+                    type="text"
+                    name="firstName"
+                    placeholder="First Name"
+                    className={`p-3 border rounded ${errors.firstName ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+                    value={firstName}
+                    onChange={(e) => { setFirstName(e.target.value); if (errors.firstName) setErrors((s) => ({ ...s, firstName: undefined })); }}
+                    aria-invalid={Boolean(errors.firstName)}
+                    title={errors.firstName || undefined}
+                  />
                 </div>
-                <select name="attendance" className="p-3 border rounded" value={attendance} onChange={(e) => { const val = e.target.value; setAttendance(val); if (val !== 'Yes') { setGuests(''); setHighChair(''); setHighChairCount(''); } if (errors.attendance) setErrors((s) => ({ ...s, attendance: undefined })); }}>
+                <select
+                  name="attendance"
+                  className={`p-3 border rounded ${errors.attendance ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  value={attendance}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setAttendance(val);
+                    if (val !== 'Yes') {
+                      setGuests('');
+                      setHighChair('');
+                      setHighChairCount('');
+                    }
+                    if (errors.attendance) setErrors((s) => ({ ...s, attendance: undefined }));
+                  }}
+                  aria-invalid={Boolean(errors.attendance)}
+                  title={errors.attendance || undefined}
+                >
                   <option value="">Will you attend?</option>
                   <option value="Yes">Yes</option>
                   <option value="No">No</option>
                 </select>
                 {attendance === 'Yes' ? (
                   <>
-                    <input type="number" name="guests" placeholder="No. of Guests (incl. you)" min={1} className="p-3 border rounded" value={guests} onChange={(e) => { const v = e.target.value === '' ? '' : Number(e.target.value); setGuests(v); if (errors.guests) setErrors((s) => ({ ...s, guests: undefined })); }} />
+                    <input
+                      type="number"
+                      name="guests"
+                      placeholder="No. of Guests (incl. you)"
+                      min={1}
+                      className={`p-3 border rounded ${errors.guests ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+                      value={guests}
+                      onChange={(e) => {
+                        const v = e.target.value === '' ? '' : Number(e.target.value);
+                        setGuests(v);
+                        if (errors.guests) setErrors((s) => ({ ...s, guests: undefined }));
+                      }}
+                      aria-invalid={Boolean(errors.guests)}
+                      title={errors.guests || undefined}
+                    />
                     <div className="text-left mt-2">
                       <div className="mb-2">Do you need a high chair?</div>
                       <div className="flex items-center gap-4">
-                        <label className="inline-flex items-center gap-2"><input type="radio" name="highChair" value="Yes" checked={highChair === 'Yes'} onChange={(e) => { setHighChair(e.target.value); if (errors.highChair) setErrors((s) => ({ ...s, highChair: undefined })); }} /> Yes</label>
-                        <label className="inline-flex items-center gap-2"><input type="radio" name="highChair" value="No" checked={highChair === 'No'} onChange={(e) => { setHighChair(e.target.value); setHighChairCount(''); if (errors.highChair) setErrors((s) => ({ ...s, highChair: undefined })); if (errors.highChairCount) setErrors((s) => ({ ...s, highChairCount: undefined })); }} /> No</label>
+                        <label className="inline-flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="highChair"
+                            value="Yes"
+                            checked={highChair === 'Yes'}
+                            onChange={(e) => {
+                              setHighChair(e.target.value);
+                              if (errors.highChair) setErrors((s) => ({ ...s, highChair: undefined }));
+                            }}
+                            aria-invalid={Boolean(errors.highChair)}
+                            title={errors.highChair || undefined}
+                          />
+                          Yes
+                        </label>
+                        <label className="inline-flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="highChair"
+                            value="No"
+                            checked={highChair === 'No'}
+                            onChange={(e) => {
+                              setHighChair(e.target.value);
+                              setHighChairCount('');
+                              if (errors.highChair) setErrors((s) => ({ ...s, highChair: undefined }));
+                              if (errors.highChairCount) setErrors((s) => ({ ...s, highChairCount: undefined }));
+                            }}
+                            aria-invalid={Boolean(errors.highChair)}
+                            title={errors.highChair || undefined}
+                          />
+                          No
+                        </label>
                       </div>
-                      {highChair === 'Yes' ? (<input type="number" name="highChairCount" placeholder="How many?" min={1} className="mt-2 p-3 border rounded w-full" value={highChairCount} onChange={(e) => { const v = e.target.value === '' ? '' : Number(e.target.value); setHighChairCount(v); if (errors.highChairCount) setErrors((s) => ({ ...s, highChairCount: undefined })); }} />) : null}
+                      {highChair === 'Yes' ? (
+                        <input
+                          type="number"
+                          name="highChairCount"
+                          placeholder="How many?"
+                          min={1}
+                          className={`mt-2 p-3 border rounded w-full ${errors.highChairCount ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+                          value={highChairCount}
+                          onChange={(e) => {
+                            const v = e.target.value === '' ? '' : Number(e.target.value);
+                            setHighChairCount(v);
+                            if (errors.highChairCount) setErrors((s) => ({ ...s, highChairCount: undefined }));
+                          }}
+                          aria-invalid={Boolean(errors.highChairCount)}
+                          title={errors.highChairCount || undefined}
+                        />
+                      ) : null}
                     </div>
                   </>
                 ) : null}
-                <textarea name="message" rows={3} placeholder="Message (optional)" className="p-3 border rounded" value={message} onChange={(e) => { setMessage(e.target.value); if (errors.message) setErrors((s) => ({ ...s, message: undefined })); }} />
+                <textarea
+                  name="message"
+                  rows={3}
+                  placeholder="Message (optional)"
+                  className={`p-3 border rounded ${errors.message ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  value={message}
+                  onChange={(e) => {
+                    setMessage(e.target.value);
+                    if (errors.message) setErrors((s) => ({ ...s, message: undefined }));
+                  }}
+                  aria-invalid={Boolean(errors.message)}
+                  title={errors.message || undefined}
+                />
                 <button type="submit" disabled={loading} className={`mt-4 justify-self-center w-auto min-w-[9rem] theme-btn text-white py-2 px-5 rounded-full shadow-sm ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}>{loading ? 'Submitting...' : 'Submit'}</button>
               </form>
             </div>
