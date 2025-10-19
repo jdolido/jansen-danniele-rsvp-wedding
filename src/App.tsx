@@ -16,6 +16,15 @@ type VenueDetail = {
   sketchSource?: string;
 };
 
+type EntourageSection = {
+  key: string;
+  title: string;
+  items: string[];
+  ordered?: boolean;
+  columns?: boolean;
+  groupHeading?: string;
+};
+
 export default function App() {
 
   // ensure larger default text size and clear legacy toggle preference
@@ -401,7 +410,7 @@ export default function App() {
         <div className="max-w-4xl mx-auto flex justify-between items-center p-4">
           <div ref={navContainerRef} className="nav-container relative w-full">
             <div ref={navScrollerRef} className="nav-links flex gap-4 sm:gap-6 overflow-x-auto whitespace-nowrap py-1 px-1 sm:px-0">
-            {['Home', 'Details', 'Venues', 'Dress Code', 'Gifts', 'RSVP', 'Entourage'].map((label) => {
+            {['Home', 'Venues', 'Dress Code', 'Gifts', 'RSVP', 'Entourage'].map((label) => {
               const slug = label.toLowerCase().replace(/\s+/g, '-');
               if (slug === 'entourage') {
                 return (
@@ -435,12 +444,12 @@ export default function App() {
         <div className="hero-ribbon" aria-hidden="true"></div>
         <div className="max-w-4xl mx-auto text-center px-4">
           <h1 className="font-script hero-title anim" data-animate>Jansen & Danniele</h1>
-          <p className="sub-hero anim" data-animate>are Getting Married!</p>
+          <p className="font-script sub-hero anim" data-animate>joyfully invite you to celebrate their union</p>
           <p className="hero-date anim" data-animate>12.29.2025</p>
         </div>
       </section>
 
-      <section id="details" className="py-20 bg-transparent">
+  <section id="details" className="pt-16 pb-20 bg-transparent">
         <div className="max-w-3xl mx-auto text-center theme-panel p-8 rounded-xl">
           <h2 className="font-script invitation-heading">You are Invited!</h2>
           <p className="mt-6 text-lg theme-text-muted">With hearts full of love and gratitude,<br/><strong>Jansen</strong> and <strong>Danniele</strong> joyfully invite you to share in the celebration of their union —<br/>a day where love, faith, and family come together in timeless Filipino grace.</p>
@@ -725,13 +734,22 @@ export default function App() {
   );
 }
 function EntouragePage({ onBack }: { onBack: () => void }) {
+  const sections: EntourageSection[] = ENTOURAGE_SECTIONS;
+  const groupEntries = useMemo(() => {
+    const grouped = sections.reduce<Record<string, EntourageSection[]>>((acc, section) => {
+      const group = section.groupHeading || 'Other';
+      if (!acc[group]) acc[group] = [];
+      acc[group].push(section);
+      return acc;
+    }, {});
+    return Object.entries(grouped);
+  }, [sections]);
   return (
     <div className="app-content font-sans text-gray-800 relative z-10">
       <nav className="fixed w-full bg-white/60 backdrop-blur-md shadow z-20 theme-invitation-bg">
         <div className="max-w-4xl mx-auto flex justify-between items-center p-4">
-          <div className="text-2xl font-script text-4xl theme-text-muted">Jansen & Danniele</div>
           <div className="space-x-6">
-            <button onClick={onBack} className="cursor-pointer hover:text-green-600">Back</button>
+            <button onClick={onBack} className="cursor-pointer hover:text-green-600">Home</button>
           </div>
         </div>
       </nav>
@@ -741,17 +759,38 @@ function EntouragePage({ onBack }: { onBack: () => void }) {
           <h2 className="font-script invitation-heading">Entourage</h2>
           <p className="mt-4 theme-text-muted">These are the people standing with us on our wedding day — family and dear friends who have supported us through the years.</p>
           <div className="mt-6 text-left theme-text-muted">
-            <ul className="list-disc ml-5">
-              <li><strong>Officiant:</strong> Rev. [Name]</li>
-              <li><strong>Parents:</strong> Mr. &amp; Mrs. [Parent Names]</li>
-              <li><strong>Maid of Honor:</strong> [Name] — lifelong friend</li>
-              <li><strong>Best Man:</strong> [Name] — longtime friend</li>
-              <li><strong>Bridesmaids:</strong> [Name], [Name], [Name]</li>
-              <li><strong>Groomsmen:</strong> [Name], [Name], [Name]</li>
-              <li><strong>Flower Girl:</strong> [Name]</li>
-              <li><strong>Ring Bearer:</strong> [Name]</li>
-            </ul>
-            <p className="mt-3">We’ll add short bios and photos soon so guests can recognize everyone at the ceremony.</p>
+            <p className="text-sm">We’re so grateful to have these loved ones standing with us throughout the celebration.</p>
+            <div className="entourage-group-wrapper">
+              {groupEntries.map(([group, list], index) => (
+                <div key={group} className="entourage-group-block">
+                  <div className="entourage-group-header">
+                    <span className="entourage-group-label">{group}</span>
+                    <div className="entourage-group-line" aria-hidden="true"></div>
+                  </div>
+                  <div className="entourage-groups">
+                    {list.map((section) => {
+                      const ListTag = section.ordered ? 'ol' : 'ul';
+                      const listClass = section.columns ? 'entourage-list entourage-list-columns' : 'entourage-list';
+                      return (
+                        <div key={section.key} className="entourage-section anim" data-animate>
+                          <h3 className="entourage-section-title">{section.title}</h3>
+                          {section.items.length === 1 && !section.ordered ? (
+                            <p className="mt-3">{section.items[0]}</p>
+                          ) : (
+                            <ListTag className={listClass}>
+                              {section.items.map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ListTag>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {index < groupEntries.length - 1 ? <div className="entourage-divider" aria-hidden="true"></div> : null}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -795,4 +834,147 @@ function VenueCard({ venue }: { venue: VenueDetail }) {
     </div>
   );
 }
+
+const ENTOURAGE_SECTIONS: EntourageSection[] = [
+  {
+    key: 'parents-groom',
+    title: 'Parents of the Groom',
+    items: ['Leo D. Dolido', 'Julieta R. Dolido'],
+    groupHeading: 'Parents',
+  },
+  {
+    key: 'parents-bride',
+    title: 'Parents of the Bride',
+    items: ['Ian Lloyd M. Omaña', 'Janis S. Constantino'],
+    groupHeading: 'Parents',
+  },
+  {
+    key: 'ninong',
+    title: 'Male Principal Sponsors (Ninong)',
+    items: [
+      'Marcial Y. Genonangan',
+      'Jose Francisco O. Catipon',
+      'Jimmy M. Romen',
+      'Roland A. Peralta',
+      'Michael M. Omaña',
+      'Victor D. Dolido',
+      'Ronald A. Mendiola',
+    ],
+    ordered: true,
+    columns: true,
+    groupHeading: 'Principal Sponsors',
+  },
+  {
+    key: 'ninang',
+    title: 'Female Principal Sponsors (Ninang)',
+    items: [
+      'Sharon D. Genonangan',
+      'Ma. Lourdes C. Catipon',
+      'Emma P. Romen',
+      'Vicky D. Peralta',
+      'Ma. Estela S. Omaña',
+      'Rose F. Dolido',
+      'Jennifer T. Mendiola',
+    ],
+    ordered: true,
+    columns: true,
+    groupHeading: 'Principal Sponsors',
+  },
+  {
+    key: 'best-man',
+    title: 'Best Man',
+    items: ['Gel Carlo E. Marquez'],
+    groupHeading: 'Principal Party',
+  },
+  {
+    key: 'maid-matron',
+    title: 'Maid / Matron of Honor',
+    items: ['Jann Ylo C. Omaña'],
+    groupHeading: 'Principal Party',
+  },
+  {
+    key: 'groomsmen',
+    title: 'Groomsmen',
+    items: [
+      'Joenard L. Opalsa',
+      'Jason S. Balagao',
+      'Meynard John G. Panganiban',
+      'Robert P. Raguindin',
+      'Harold T. Malaki',
+    ],
+    ordered: true,
+    columns: true,
+    groupHeading: 'Wedding Party',
+  },
+  {
+    key: 'bridesmaids',
+    title: 'Bridesmaids',
+    items: [
+      'Romina Victoria D. Omaña',
+      'Alexandra Nicole O. Amarillo',
+      'Ianne Louise D. Omaña',
+      'Pierre Mikhaela Constantino',
+      'Anne Mikhail S. Omaña',
+    ],
+    ordered: true,
+    columns: true,
+    groupHeading: 'Wedding Party',
+  },
+  {
+    key: 'candle',
+    title: 'Candle Sponsors',
+    items: ['Dioni Mari C. Velicaria', 'Bea Andrei V. Mancenido'],
+    groupHeading: 'Secondary Sponsors',
+  },
+  {
+    key: 'veil',
+    title: 'Veil Sponsors',
+    items: ['Alvin Q. Cruz', 'Alyssa Marie O. Marcelino'],
+    groupHeading: 'Secondary Sponsors',
+  },
+  {
+    key: 'cord',
+    title: 'Cord Sponsors',
+    items: ['Edward M. Reyteran', 'Kris Ann Geneva A. Obnial'],
+    groupHeading: 'Secondary Sponsors',
+  },
+  {
+    key: 'ring-bearer',
+    title: 'Ring Bearer',
+    items: ['Noah C. Malaki'],
+    groupHeading: 'Processional',
+  },
+  {
+    key: 'bible-bearer',
+    title: 'Bible Bearer',
+    items: ['Lucaz Gabriel D. Victorio'],
+    groupHeading: 'Processional',
+  },
+  {
+    key: 'coin-bearer',
+    title: 'Coin Bearer',
+    items: ['Zaion Kobe R. Grueso'],
+    groupHeading: 'Processional',
+  },
+  {
+    key: 'flower-girls',
+    title: 'Flower Girls',
+    items: [
+      'Avery Skyler D. Espiritu',
+      'Abrielle Sunshine D. Espiritu',
+      'Elaiza Mari M. Velicaria',
+      'Vianney Carla E. Marquez',
+      'Nathalie Amara C. Malaki',
+    ],
+    ordered: true,
+    columns: true,
+    groupHeading: 'Processional',
+  },
+  {
+    key: 'others',
+    title: 'Others',
+    items: ['Little Bride: Lianna Ellise O. Dolido'],
+    groupHeading: 'Processional',
+  },
+];
 

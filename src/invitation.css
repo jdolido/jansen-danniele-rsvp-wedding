@@ -64,7 +64,7 @@ button { min-height: 40px; }
     min-height: 65vh;
     /* leave extra space so hero content sits well below the fixed nav; uses a safe-top variable */
     padding-top: calc(var(--nav-safe-top) + 4rem);
-    padding-bottom: 4rem;
+    padding-bottom: 2.6rem;
 }
 
 /* When jumping to anchors, offset by the nav height so sections are visible */
@@ -256,7 +256,7 @@ section:not(#home)::before {
     .invitation-hero {
         /* ensure hero title sits lower on small screens so the fixed nav won't overlap */
         padding-top: calc(var(--nav-safe-top) + 1.5rem);
-        padding-bottom: 2.5rem;
+        padding-bottom: 2.1rem;
         min-height: 56vh;
     }
     .invitation-hero .hero-title {
@@ -399,6 +399,49 @@ textarea:focus-visible,
 .venue-sketch { width: 100%; max-width: 360px; border-radius: 0.75rem; border: 1px solid rgba(11,114,133,0.12); box-shadow: 0 18px 38px rgba(2,6,23,0.08); }
 
 /* Lightbox / modal styles (ensure the lightbox is fixed over the page) */
+.entourage-group-wrapper { margin-top: 2rem; display: grid; gap: 2.2rem; }
+.entourage-group-block { display: grid; gap: 1.75rem; }
+.entourage-group-header { display: flex; align-items: center; gap: 1rem; }
+.entourage-group-label {
+    font-size: 0.82rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: rgba(11,114,133,0.68);
+    white-space: nowrap;
+}
+.entourage-group-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(11,114,133,0.15), rgba(199,125,74,0));
+}
+.entourage-groups { display: grid; gap: 1.5rem; }
+@media (min-width: 768px) {
+    .entourage-groups { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+}
+.entourage-section { padding: 0.2rem 0; }
+.entourage-section-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--base-text);
+}
+.entourage-list {
+    margin: 0.85rem 0 0;
+    padding-left: 1.1rem;
+    color: var(--muted-text);
+}
+.entourage-list li { margin-bottom: 0.35rem; break-inside: avoid; }
+.entourage-list-columns { column-count: 2; column-gap: 1.25rem; }
+@media (max-width: 640px) {
+    .entourage-list-columns { column-count: 1; }
+}
+.entourage-divider {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(199,125,74,0.08), rgba(11,114,133,0.18), rgba(199,125,74,0.08));
+    border-radius: 999px;
+    margin-top: 0.5rem;
+}
 .lightbox-overlay {
     position: fixed;
     inset: 0;
