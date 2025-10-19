@@ -1,7 +1,6 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./invitation.css";
 
-type ImageItem = { src: string; alt?: string };
 type VenueDetail = {
   key: string;
   label: string;
@@ -14,109 +13,17 @@ type VenueDetail = {
   wazeLink: string;
   mapNote?: string;
   tips: string[];
+  sketchSource?: string;
 };
 
-function Lightbox({ images, index, onClose, onPrev, onNext }: { images: ImageItem[]; index: number; onClose: () => void; onPrev: () => void; onNext: () => void; }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      if (e.key === 'ArrowLeft') onPrev();
-      if (e.key === 'ArrowRight') onNext();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, onPrev, onNext]);
-
-  const img = images[index];
-  return (
-    <div className="lightbox-overlay" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
-        <button className="lightbox-close" onClick={onClose} aria-label="Close">✕</button>
-        <button className="lightbox-prev" onClick={onPrev} aria-label="Previous">‹</button>
-        <img src={img.src} alt={img.alt || ""} className="lightbox-img" />
-        <button className="lightbox-next" onClick={onNext} aria-label="Next">›</button>
-      </div>
-    </div>
-  );
-}
-
-function Gallery({ images, galleryId, allowOpen = false }: { images: ImageItem[]; galleryId?: string; allowOpen?: boolean }) {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
-  const idxRef = useRef(0);
-  const intervalRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 640px)');
-    const upd = () => setIsMobile(mq.matches);
-    upd();
-    mq.addEventListener?.('change', upd);
-    return () => mq.removeEventListener?.('change', upd);
-  }, []);
-
-  useEffect(() => {
-    // autoplay only on mobile when opening is allowed
-    if (isMobile && allowOpen) {
-      intervalRef.current = window.setInterval(() => {
-        idxRef.current = (idxRef.current + 1) % images.length;
-        setOpenIndex(idxRef.current);
-      }, 3000);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      setOpenIndex(null);
-    }
-    return () => { if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; } };
-  }, [isMobile, images.length, allowOpen]);
-
-  const open = (i: number) => { if (!allowOpen) return; setOpenIndex(i); idxRef.current = i; };
-  const close = () => setOpenIndex(null);
-  const prev = () => setOpenIndex((v) => { if (v == null) return 0; return (v - 1 + images.length) % images.length; });
-  const next = () => setOpenIndex((v) => { if (v == null) return 0; return (v + 1) % images.length; });
-
-  if (isMobile) {
-    // show single autoplaying image strip (still clickable to open lightbox)
-    return (
-      <div id={galleryId} className="gallery-carousel">
-        {images.map((img, i) => (
-          <img key={i} src={img.src} alt={img.alt || ''} loading="lazy" className={`carousel-img ${openIndex === i ? 'active' : ''}`} onClick={() => open(i)} />
-        ))}
-        {allowOpen && openIndex !== null && <Lightbox images={images} index={openIndex} onClose={close} onPrev={prev} onNext={next} />}
-      </div>
-    );
-  }
-
-  return (
-    <div id={galleryId} className="gallery-grid">
-      {images.map((img, i) => (
-        <img key={i} src={img.src} alt={img.alt || ''} loading="lazy" className="rounded-lg gallery-img shadow-md" onClick={() => open(i)} />
-      ))}
-      {allowOpen && openIndex !== null && <Lightbox images={images} index={openIndex} onClose={close} onPrev={prev} onNext={next} />}
-    </div>
-  );
-}
-
 export default function App() {
-  // IntersectionObserver to add 'in-view' class for elements with data-animate
-  useEffect(() => {
-    const nodes = Array.from(document.querySelectorAll('[data-animate]')) as HTMLElement[];
-    if (!nodes.length) return;
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((ent) => {
-        if (ent.isIntersecting) ent.target.classList.add('in-view');
-        else ent.target.classList.remove('in-view');
-      });
-    }, { threshold: 0.12 });
-    nodes.forEach(n => io.observe(n));
-    return () => io.disconnect();
-  }, []);
 
+  // ensure larger default text size and clear legacy toggle preference
   useEffect(() => {
     document.documentElement.style.setProperty('--font-scale', '1.12');
     try { localStorage.removeItem('text_scale_v1'); } catch {}
   }, []);
+
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [attendance, setAttendance] = useState<string>("");
@@ -128,15 +35,14 @@ export default function App() {
   const [message, setMessage] = useState<string>("");
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
 
-  // Gifts state
   const [giftName, setGiftName] = useState<string>("");
   const [giftAmount, setGiftAmount] = useState<string>("");
   const [giftNote, setGiftNote] = useState<string>("");
   const [giftSaved, setGiftSaved] = useState(false);
   const [copied, setCopied] = useState<Record<string, boolean>>({});
 
-  // Modal state for the dress image (so clicking the image maximizes it)
   const [dressModalOpen, setDressModalOpen] = useState(false);
+  const [generatedSketches, setGeneratedSketches] = useState<Record<string, string>>({});
 
   // Simple hash-based route: '' or 'home' for main site, 'entourage' for separate page
   const initialRoute = (window.location.hash || '').replace('#/', '').replace('#', '') || 'home';
@@ -150,6 +56,20 @@ export default function App() {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
+
+  // re-register fade-in observers whenever the rendered route changes
+  useEffect(() => {
+    const nodes = Array.from(document.querySelectorAll('[data-animate]')) as HTMLElement[];
+    if (!nodes.length) return;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((ent) => {
+        if (ent.isIntersecting) ent.target.classList.add('in-view');
+        else ent.target.classList.remove('in-view');
+      });
+    }, { threshold: 0.12 });
+    nodes.forEach((n) => io.observe(n));
+    return () => io.disconnect();
+  }, [route]);
 
   const STORAGE_KEY = "rsvp_form_v1";
 
@@ -167,7 +87,7 @@ export default function App() {
         setMessage(parsed.message || "");
       }
     } catch (e) {
-      // ignore
+      // ignore parse errors
     }
   }, []);
 
@@ -176,46 +96,139 @@ export default function App() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (e) {
-      // ignore
+      // ignore storage write errors
     }
   }, [firstName, lastName, attendance, guests, highChair, highChairCount, message]);
 
-  const venues: VenueDetail[] = [
+  const venues = useMemo<VenueDetail[]>(() => ([
     {
       key: 'ceremony',
       label: 'Ceremony',
       title: 'St. Ferdinand Cathedral',
       time: 'Processional starts at 2:00 PM • Kindly be seated by 1:30 PM',
-      address: 'Gonzaga St, San Vicente, Ilagan City, Isabela',
-      description: 'Our vows will be held in the historic cathedral beside the city plaza. Ushers will welcome you at the main doors along Gonzaga Street; side doors remain open for late arrivals.',
-      mapEmbed: 'https://www.google.com/maps?q=St.+Ferdinand+Cathedral,+Ilagan+City&output=embed',
-      googleLink: 'https://maps.google.com/?q=St.+Ferdinand+Cathedral,+Ilagan+City',
-      wazeLink: 'https://waze.com/ul?ll=17.1414,121.8897&navigate=yes&zoom=17',
-      mapNote: 'Pin drops at the cathedral’s plaza entrance. Guest parking is on the left-hand lot beside the parish office.',
+      address: 'Granja St, Lucena City, Quezon',
+      description: 'Our vows will be held in the heart of Lucena City. Enter through the cathedral doors along Granja Street—ushers will guide you to the reserved pews near the center aisle.',
+      mapEmbed: 'https://www.google.com/maps?q=St.+Ferdinand+Cathedral,+Lucena+City&output=embed',
+      googleLink: 'https://maps.google.com/?q=St.+Ferdinand+Cathedral,+Lucena+City',
+      wazeLink: 'https://waze.com/ul?q=St.%20Ferdinand%20Cathedral%20Lucena&navigate=yes',
+      mapNote: 'The pin lands on the Granja Street frontage; limited paid parking is available beside the parish office and across the street near the plaza.',
       tips: [
-        'Arrive 20 minutes early to sign the guest book and settle into the pews.',
+        'Arrive 20 minutes early to sign the guest book and settle comfortably inside the nave.',
         'Dress code reminder: Filipiniana-inspired attire in joyful, light hues.',
-        'If arriving by tricycle, ask to be dropped at the plaza-facing doors for easiest access.',
+        'If arriving by jeepney or tricycle, ask to alight at the cathedral steps on Granja Street for the smoothest entry.',
       ],
     },
     {
       key: 'reception',
       label: 'Reception',
-      title: 'Potch Restaurant & Banquet Hall',
+      title: 'Potch Restaurant Grand Banquet Hall',
       time: 'Cocktails at 5:00 PM • Dinner program begins at 6:00 PM',
-      address: 'Rizal St, Poblacion, Ilagan City, Isabela',
-      description: 'Celebrate with us at Potch Restaurant, a 10-minute drive south of the cathedral. The banquet hall entrance is through the teal gate facing Rizal Street.',
-      mapEmbed: 'https://www.google.com/maps?q=Potch+Restaurant,+Ilagan+City&output=embed',
-      googleLink: 'https://maps.google.com/?q=Potch+Restaurant,+Ilagan+City',
-      wazeLink: 'https://waze.com/ul?ll=17.1348,121.8879&navigate=yes&zoom=17',
-      mapNote: 'Parking is available inside the compound; attendants will guide you to the covered slots behind the hall.',
+      address: 'Quezon Eco Tourism Road, Lucena City, Quezon',
+      description: 'Celebrate with us at Potch Restaurant’s Grand Banquet Hall, a 20-minute drive from the cathedral. The reception gate sits along Quezon Eco Tourism Road.',
+      mapEmbed: 'https://www.google.com/maps?q=Potch+Restaurant+Grand+Banquet+Hall,+Lucena+City&output=embed',
+      googleLink: 'https://maps.google.com/?q=Potch+Restaurant+Grand+Banquet+Hall,+Lucena+City',
+      wazeLink: 'https://waze.com/ul?q=Potch%20Restaurant%20Grand%20Banquet%20Hall%20Lucena&navigate=yes',
+      mapNote: 'On-site parking is available through the main gate; attendants will direct you to the covered slots behind the hall.',
       tips: [
-        'Travel time from the cathedral is about 10 minutes without traffic—feel free to join the convoy leaving at 4:15 PM.',
-        'A welcome drink station opens at 5:00 PM; light snacks are ready for early arrivals.',
-        'If using rideshare, set the drop-off to “Potch Restaurant Main Gate” for the correct entrance.',
+        'Travel time from the cathedral is about 20 minutes without traffic.',
+        'A welcome drink station opens at 5:00 PM; light snacks and "tusok-tusok" are ready for early arrivals.',
       ],
+      sketchSource: '/assets/potch-grand-banquet.jpg',
     },
-  ];
+  ]), []);
+
+  useEffect(() => {
+    let canceled = false;
+
+    const generateSketch = (src: string) => {
+      return new Promise<string>((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = src;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Canvas context unavailable'));
+            return;
+          }
+          ctx.drawImage(img, 0, 0);
+          const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const pixelCount = width * height;
+          const gray = new Float32Array(pixelCount);
+
+          for (let i = 0; i < pixelCount; i++) {
+            const idx = i * 4;
+            gray[i] = data[idx] * 0.299 + data[idx + 1] * 0.587 + data[idx + 2] * 0.114;
+          }
+
+          const output = ctx.createImageData(width, height);
+          const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+          const sobelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+
+          for (let i = 0; i < output.data.length; i += 4) {
+            output.data[i] = 255;
+            output.data[i + 1] = 255;
+            output.data[i + 2] = 255;
+            output.data[i + 3] = 255;
+          }
+
+          for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+              const idx = y * width + x;
+              let gx = 0;
+              let gy = 0;
+              let k = 0;
+
+              for (let ky = -1; ky <= 1; ky++) {
+                for (let kx = -1; kx <= 1; kx++) {
+                  const pixel = gray[idx + ky * width + kx];
+                  gx += pixel * sobelX[k];
+                  gy += pixel * sobelY[k];
+                  k++;
+                }
+              }
+
+              let magnitude = Math.sqrt(gx * gx + gy * gy) * 0.9;
+              magnitude = Math.max(0, Math.min(255, magnitude));
+              const val = 255 - magnitude;
+              const outIdx = idx * 4;
+              output.data[outIdx] = val;
+              output.data[outIdx + 1] = val;
+              output.data[outIdx + 2] = val;
+              output.data[outIdx + 3] = 255;
+            }
+          }
+
+          ctx.putImageData(output, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = () => reject(new Error('Unable to load source image'));
+      });
+    };
+
+    const sketchTargets = venues.filter((v) => v.sketchSource);
+    sketchTargets.forEach((venue) => {
+      const src = venue.sketchSource!;
+      generateSketch(src)
+        .then((url) => {
+          if (!canceled) {
+            setGeneratedSketches((prev) => ({ ...prev, [venue.key]: url }));
+          }
+        })
+        .catch(() => {
+          /* ignore sketch generation errors */
+        });
+    });
+
+    return () => {
+      canceled = true;
+    };
+  }, [venues]);
+
+  const receptionSketchUrl = generatedSketches['reception'];
 
   const smoothScroll = (id: string) => {
     const target = document.getElementById(id);
@@ -245,7 +258,6 @@ export default function App() {
     }
   };
 
-  // small set of badge examples for Dress Code (used with staggered animation)
   const dressBadges = ['Filipiniana', 'Puffed Sleeves', 'Barong', 'Pastels', 'Floral Pins'];
 
   const GIFT_KEY = "gift_intent_v1";
@@ -325,7 +337,7 @@ export default function App() {
       <nav className="fixed w-full bg-white/60 backdrop-blur-md shadow z-20 theme-invitation-bg">
         <div className="max-w-4xl mx-auto flex justify-between items-center p-4">
           <div className="space-x-6">
-            {['Home', 'Details', 'Venues', 'Entourage', 'Dress Code', 'Gifts', 'RSVP'].map((label) => {
+            {['Home', 'Details', 'Venues', 'Dress Code', 'Gifts', 'RSVP', 'Entourage'].map((label) => {
               const slug = label.toLowerCase().replace(/\s+/g, '-');
               if (slug === 'entourage') {
                 return (
@@ -360,7 +372,7 @@ export default function App() {
         <div className="max-w-5xl mx-auto space-y-8">
           <div className="theme-panel p-8 rounded-xl text-center">
             <h2 className="font-script invitation-heading">Venues</h2>
-            <p className="mt-4 theme-text-muted text-base">We’ll celebrate in two beautiful spots in Ilagan City. Use the guides below for arrival times, parking notes, and quick links to Google Maps and Waze.</p>
+            <p className="mt-4 theme-text-muted text-base">We’ll celebrate in two beautiful spots in Lucena City. Use the guides below for arrival times, parking notes, and quick links to Google Maps and Waze.</p>
             <p className="mt-2 text-sm theme-text-muted">Tap the map buttons or the embedded maps to open turn-by-turn directions on your phone.</p>
           </div>
 
@@ -372,18 +384,27 @@ export default function App() {
 
           <div className="theme-panel p-6 rounded-xl text-left">
             <h3 className="font-semibold text-lg">Travel between the ceremony & reception</h3>
-            <p className="mt-2 theme-text-muted text-base">Expect a relaxing 3.2 km (about 10 minutes) drive heading south along Rizal Street. A family convoy leaves from the cathedral parking lot at <strong>4:15 PM</strong> for guests who wish to follow.</p>
+            <p className="mt-2 theme-text-muted text-base">Expect a smooth 10.4 km (about 20 minutes) drive: follow Quezon Eco Tourism Road, then watch for the gray Potch gate on the right.</p>
             <ul className="list-disc ml-5 mt-3 text-sm theme-text-muted space-y-1">
-              <li>Share the Waze link ahead of time so drivers can preload the route.</li>
-              <li>Parking attendants are on duty at Potch; look for the teal uniforms at the gate.</li>
-              <li>Need a ride? Message us by December 15 and we’ll reserve a seat in the shuttle van.</li>
+              <li>Share the Waze pin with your driver before leaving so navigation is ready when signal dips.</li>
+              <li>Parking attendants in teal polos will wave you toward the covered slots or assist with drop-offs.</li>
             </ul>
-            <div className="mt-6">
-              <Gallery allowOpen={false} galleryId="venue-gallery" images={[
-                { src: '/assets/venue-mood1.svg', alt: 'Cathedral aisle inspiration sketch' },
-                { src: '/assets/venue-sketch.svg', alt: 'Reception hall layout mockup' },
-                { src: '/assets/palette.svg', alt: 'Venue color palette' },
-              ]} />
+            <div className="mt-6 space-y-6">
+              <div className="lg:flex lg:items-center lg:gap-6">
+                <img src="/assets/church-sketch.jpg" alt="Hand-drawn sketch of St. Ferdinand Cathedral in Lucena City" className="venue-sketch" loading="lazy" />
+                <p className="mt-4 lg:mt-0 text-sm theme-text-muted leading-relaxed max-w-lg">A keepsake sketch of St. Ferdinand Cathedral to help guests spot its distinct façade. We’ll have signage by the main doors so you know you’re in the right place.</p>
+              </div>
+              <div className="lg:flex lg:items-center lg:gap-6">
+                <img
+                  src={receptionSketchUrl || '/assets/reception-sketch.jpg'}
+                  alt="Sketch of Potch Restaurant Grand Banquet Hall"
+                  className="venue-sketch"
+                  loading="lazy"
+                />
+                <p className="mt-4 lg:mt-0 text-sm theme-text-muted leading-relaxed max-w-lg">
+                  A soft sketch of Potch Restaurant’s Grand Banquet Hall to guide your eye along Quezon Eco Tourism Road. Look for the gray gate with "Potch" signage to enter the reception grounds.
+                </p>
+              </div>
             </div>
           </div>
         </div>
