@@ -849,6 +849,12 @@ const ENTOURAGE_SECTIONS: EntourageSection[] = [
     groupHeading: 'Parents',
   },
   {
+    key: 'little-bride',
+    title: 'Little Bride',
+    items: ['Lianna Ellise O. Dolido'],
+    groupHeading: 'Special Entourage',
+  },
+  {
     key: 'ninong',
     title: 'Male Principal Sponsors (Ninong)',
     items: [
@@ -888,7 +894,7 @@ const ENTOURAGE_SECTIONS: EntourageSection[] = [
   },
   {
     key: 'maid-matron',
-    title: 'Man of Honor',
+    title: 'Maid / Matron of Honor',
     items: ['Jann Ylo C. Omaña'],
     groupHeading: 'Principal Party',
   },
@@ -968,12 +974,6 @@ const ENTOURAGE_SECTIONS: EntourageSection[] = [
     ],
     ordered: true,
     columns: true,
-    groupHeading: 'Processional',
-  },
-  {
-    key: 'others',
-    title: 'Others',
-    items: ['Little Bride: Lianna Ellise O. Dolido'],
     groupHeading: 'Processional',
   },
 ];
