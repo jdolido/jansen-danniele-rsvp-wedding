@@ -27,6 +27,9 @@ type EntourageSection = {
 
 export default function App() {
 
+  const [welcomeStage, setWelcomeStage] = useState<'show' | 'closing' | 'hidden'>('show');
+  const manualHideTimeoutRef = useRef<number | null>(null);
+
   // ensure larger default text size and clear legacy toggle preference
   useEffect(() => {
     document.documentElement.style.setProperty('--font-scale', '1.12');
@@ -48,6 +51,27 @@ export default function App() {
   const [generatedSketches, setGeneratedSketches] = useState<Record<string, string>>({});
   const navContainerRef = useRef<HTMLDivElement | null>(null);
   const navScrollerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (welcomeStage === 'hidden') {
+      document.body.style.overflow = '';
+      return;
+    }
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [welcomeStage]);
+
+  const dismissWelcome = useCallback(() => {
+    if (welcomeStage === 'hidden' || manualHideTimeoutRef.current != null) return;
+    setWelcomeStage('closing');
+    manualHideTimeoutRef.current = window.setTimeout(() => {
+      setWelcomeStage('hidden');
+      manualHideTimeoutRef.current = null;
+    }, 420);
+  }, [welcomeStage]);
 
   const updateNavGradients = useCallback(() => {
     const container = navContainerRef.current;
@@ -406,6 +430,30 @@ export default function App() {
 
   return (
     <div className="app-content font-sans text-gray-800 relative z-10">
+      {welcomeStage !== 'hidden' ? (
+        <div
+          className={`welcome-overlay ${welcomeStage === 'closing' ? 'closing' : ''}`}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="welcome-dialog-title"
+          aria-describedby="welcome-dialog-subtitle"
+        >
+          <div className={`welcome-card ${welcomeStage === 'closing' ? 'closing' : ''}`}>
+            <div className="welcome-bloom" aria-hidden="true"></div>
+            <p className="welcome-greeting font-script">Mabuhay &amp; Welcome</p>
+            <h2 id="welcome-dialog-title" className="welcome-names font-script">Jansen &amp; Danniele</h2>
+            <p id="welcome-dialog-subtitle" className="welcome-subtitle">December 29, 2025 • Lucena City</p>
+            <p className="welcome-note">We’re so grateful to celebrate with you—find the schedule, venues, attire inspiration, and RSVP details inside.</p>
+            <button
+              type="button"
+              className="welcome-skip theme-btn"
+              onClick={dismissWelcome}
+            >
+              Enter Site
+            </button>
+          </div>
+        </div>
+      ) : null}
       <nav className="fixed w-full bg-white/60 backdrop-blur-md shadow z-20 theme-invitation-bg">
         <div className="max-w-4xl mx-auto flex justify-between items-center p-4">
           <div ref={navContainerRef} className="nav-container relative w-full">
