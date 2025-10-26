@@ -194,6 +194,7 @@ export default function App() {
       mapNote: 'The pin lands on the Quezon Ave. Street frontage; limited paid parking is available beside the parish office and across the street near the plaza.',
       tips: [
         ],
+      sketchSource: '/assets/church-image.jpg',
     },
     {
       key: 'reception',
@@ -304,6 +305,7 @@ export default function App() {
     };
   }, [venues]);
 
+  const ceremonySketchUrl = generatedSketches['ceremony'];
   const receptionSketchUrl = generatedSketches['reception'];
 
   const smoothScroll = (id: string) => {
@@ -523,11 +525,16 @@ export default function App() {
             <p className="mt-2 theme-text-muted text-base">Expect a smooth 10.4 km (about 20 minutes) drive: follow Quezon Eco Tourism Road, then watch for the gray Potch gate on the right.</p>
             <ul className="list-disc ml-5 mt-3 text-sm theme-text-muted space-y-1">
               <li>Share the Waze pin with your driver before leaving so navigation is ready when signal dips.</li>
-              <li>Parking attendants in teal polos will wave you toward the covered slots or assist with drop-offs.</li>
+              <li>Parking attendants will wave you toward the covered slots or assist with drop-offs.</li>
             </ul>
             <div className="mt-6 space-y-6">
               <div className="lg:flex lg:items-center lg:gap-6">
-                <img src="/assets/church-sketch.jpg" alt="Hand-drawn sketch of St. Ferdinand Cathedral in Lucena City" className="venue-sketch" loading="lazy" />
+                <img
+                  src={ceremonySketchUrl || '/assets/church-sketch.jpg'}
+                  alt="Hand-drawn sketch of St. Ferdinand Cathedral in Lucena City"
+                  className="venue-sketch"
+                  loading="lazy"
+                />
                 <p className="mt-4 lg:mt-0 text-sm theme-text-muted leading-relaxed max-w-lg">A keepsake sketch of St. Ferdinand Cathedral to help guests spot its distinct façade. We’ll have signage by the main doors so you know you’re in the right place.</p>
               </div>
               <div className="lg:flex lg:items-center lg:gap-6">
@@ -561,7 +568,7 @@ export default function App() {
             </div>
 
             <div className="mt-4">
-              <p className="mb-2">We'd love to see you in any happy or pastel color — please avoid Black or White tops so photos stay soft and cohesive.</p>
+              <p className="mb-2">We'd love to see you in any pastel color — please avoid Black or White tops so photos stay soft and cohesive.</p>
               <div className="flex flex-wrap gap-2 mt-3 example-badges" data-animate>
                 {dressBadges.map((b, i) => (
                   <span key={b} className="badge anim" style={{ transitionDelay: `${i * 80}ms` }}>{b}</span>
@@ -572,7 +579,7 @@ export default function App() {
                 <ul className="list-disc ml-5">
                   <li>Casual T-shirts, athletic wear, or visible logos</li>
                   <li>Jeans, shorts, or overly casual sandals</li>
-                  <li>Black or plain white tops (we prefer joyful, pastel hues)</li>
+                  <li>Black or plain white tops (we prefer pastel hues)</li>
                 </ul>
               </div>
             </div>
@@ -847,6 +854,31 @@ function EntouragePage({ onBack }: { onBack: () => void }) {
 }
 
 function VenueCard({ venue }: { venue: VenueDetail }) {
+  const isInAppBrowser = typeof navigator !== 'undefined' && /FBAN|FBAV|FB_IAB|FBIOS|FB4A|Instagram|Messenger|Line\//i.test(navigator.userAgent);
+  const [fallbackActive, setFallbackActive] = useState<boolean>(isInAppBrowser);
+  const fallbackTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (isInAppBrowser) return;
+    fallbackTimerRef.current = window.setTimeout(() => {
+      setFallbackActive(true);
+    }, 3500);
+    return () => {
+      if (fallbackTimerRef.current != null) {
+        window.clearTimeout(fallbackTimerRef.current);
+        fallbackTimerRef.current = null;
+      }
+    };
+  }, [isInAppBrowser]);
+
+  const handleIframeLoad = () => {
+    if (fallbackTimerRef.current != null) {
+      window.clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+    setFallbackActive(false);
+  };
+
   return (
     <div className="theme-panel p-8 rounded-xl text-left">
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
@@ -867,14 +899,26 @@ function VenueCard({ venue }: { venue: VenueDetail }) {
           </div>
         </div>
         <div className="lg:w-1/2 space-y-3">
-          <div className="map-frame rounded-xl">
-            <iframe
-              src={venue.mapEmbed}
-              title={`${venue.title} map`}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              allowFullScreen
-            />
+          <div className={`map-frame rounded-xl ${fallbackActive ? 'map-frame-fallback' : ''}`}>
+            {!isInAppBrowser ? (
+              <iframe
+                src={venue.mapEmbed}
+                title={`${venue.title} map`}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+                style={{ opacity: fallbackActive ? 0 : 1, transition: 'opacity 220ms ease' }}
+                onLoad={handleIframeLoad}
+              />
+            ) : null}
+            {fallbackActive ? (
+              <div className="map-fallback">
+                <strong>Map preview unavailable here</strong>
+                <span>Tap the buttons above to open directions in Google Maps or Waze.</span>
+                <span className="map-fallback-note">Address: {venue.address}</span>
+                <span className="map-fallback-note">Tip: Some in-app browsers block map embeds. Open in your mobile browser if needed.</span>
+              </div>
+            ) : null}
           </div>
           {venue.mapNote ? <p className="text-xs theme-text-muted leading-relaxed">{venue.mapNote}</p> : null}
         </div>
