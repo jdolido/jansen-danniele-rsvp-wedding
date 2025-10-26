@@ -137,6 +137,7 @@ export default function App() {
     };
   }, [syncNavToPageScroll]);
 
+
   // re-register fade-in observers whenever the rendered route changes
   useEffect(() => {
     const nodes = Array.from(document.querySelectorAll('[data-animate]')) as HTMLElement[];
@@ -453,6 +454,7 @@ export default function App() {
             >
               Enter Site
             </button>
+            <p className="welcome-tip">Using Messenger or Facebook’s browser? For the best experience, open this link in Chrome so all maps and images load properly.</p>
           </div>
         </div>
       ) : null}
@@ -854,31 +856,6 @@ function EntouragePage({ onBack }: { onBack: () => void }) {
 }
 
 function VenueCard({ venue }: { venue: VenueDetail }) {
-  const isInAppBrowser = typeof navigator !== 'undefined' && /FBAN|FBAV|FB_IAB|FBIOS|FB4A|Instagram|Messenger|Line\//i.test(navigator.userAgent);
-  const [fallbackActive, setFallbackActive] = useState<boolean>(isInAppBrowser);
-  const fallbackTimerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (isInAppBrowser) return;
-    fallbackTimerRef.current = window.setTimeout(() => {
-      setFallbackActive(true);
-    }, 3500);
-    return () => {
-      if (fallbackTimerRef.current != null) {
-        window.clearTimeout(fallbackTimerRef.current);
-        fallbackTimerRef.current = null;
-      }
-    };
-  }, [isInAppBrowser]);
-
-  const handleIframeLoad = () => {
-    if (fallbackTimerRef.current != null) {
-      window.clearTimeout(fallbackTimerRef.current);
-      fallbackTimerRef.current = null;
-    }
-    setFallbackActive(false);
-  };
-
   return (
     <div className="theme-panel p-8 rounded-xl text-left">
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
@@ -899,26 +876,14 @@ function VenueCard({ venue }: { venue: VenueDetail }) {
           </div>
         </div>
         <div className="lg:w-1/2 space-y-3">
-          <div className={`map-frame rounded-xl ${fallbackActive ? 'map-frame-fallback' : ''}`}>
-            {!isInAppBrowser ? (
-              <iframe
-                src={venue.mapEmbed}
-                title={`${venue.title} map`}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                allowFullScreen
-                style={{ opacity: fallbackActive ? 0 : 1, transition: 'opacity 220ms ease' }}
-                onLoad={handleIframeLoad}
-              />
-            ) : null}
-            {fallbackActive ? (
-              <div className="map-fallback">
-                <strong>Map preview unavailable here</strong>
-                <span>Tap the buttons above to open directions in Google Maps or Waze.</span>
-                <span className="map-fallback-note">Address: {venue.address}</span>
-                <span className="map-fallback-note">Tip: Some in-app browsers block map embeds. Open in your mobile browser if needed.</span>
-              </div>
-            ) : null}
+          <div className="map-frame rounded-xl">
+            <iframe
+              src={venue.mapEmbed}
+              title={`${venue.title} map`}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              allowFullScreen
+            />
           </div>
           {venue.mapNote ? <p className="text-xs theme-text-muted leading-relaxed">{venue.mapNote}</p> : null}
         </div>
