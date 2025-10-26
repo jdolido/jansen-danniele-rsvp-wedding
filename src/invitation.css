@@ -541,11 +541,13 @@ textarea:focus-visible,
 .entourage-group-block { display: grid; gap: 1.75rem; }
 .entourage-group-header { display: flex; align-items: center; gap: 1rem; }
 .entourage-group-label {
-    font-size: 0.82rem;
-    letter-spacing: 0.32em;
+    font-size: 0.95rem;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
     color: rgba(11,114,133,0.68);
     white-space: nowrap;
+    font-family: 'Playfair Display', 'Times New Roman', serif;
+    font-weight: 600;
 }
 .entourage-group-line {
     flex: 1;
@@ -558,17 +560,32 @@ textarea:focus-visible,
 }
 .entourage-section { padding: 0.2rem 0; }
 .entourage-section-title {
-    font-size: 1.15rem;
-    font-weight: 600;
+    font-family: 'Great Vibes', 'Segoe Script', 'Brush Script MT', cursive;
+    font-size: 1.7rem;
+    font-weight: 400;
+    letter-spacing: 0.015em;
     margin: 0;
     color: var(--base-text);
 }
 .entourage-list {
     margin: 0.85rem 0 0;
     padding-left: 1.1rem;
-    color: var(--muted-text);
+    color: var(--base-text);
+    font-family: 'Playfair Display', 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 1.05rem;
+    letter-spacing: 0.01em;
+    line-height: 1.75;
 }
 .entourage-list li { margin-bottom: 0.35rem; break-inside: avoid; }
+.entourage-section > p {
+    font-family: 'Playfair Display', 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 1.05rem;
+    color: var(--base-text);
+    letter-spacing: 0.01em;
+    line-height: 1.75;
+}
 .entourage-list-columns { column-count: 2; column-gap: 1.25rem; }
 @media (max-width: 640px) {
     .entourage-list-columns { column-count: 1; }
