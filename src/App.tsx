@@ -537,7 +537,7 @@ export default function App() {
                   className="venue-sketch"
                   loading="lazy"
                 />
-                <p className="mt-4 lg:mt-0 text-sm theme-text-muted leading-relaxed max-w-lg">A keepsake sketch of St. Ferdinand Cathedral to help guests spot its distinct façade. We’ll have signage by the main doors so you know you’re in the right place.</p>
+                <p className="mt-4 lg:mt-0 text-sm theme-text-muted leading-relaxed max-w-lg">A keepsake sketch of St. Ferdinand Cathedral to help guests spot its distinct façade—once you arrive, coordinators will guide you toward the reserved pews.</p>
               </div>
               <div className="lg:flex lg:items-center lg:gap-6">
                 <img
