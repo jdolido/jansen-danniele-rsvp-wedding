@@ -25,6 +25,15 @@ type EntourageSection = {
   groupHeading?: string;
 };
 
+type LookupMatch = {
+  firstName: string;
+  lastName: string;
+  rowIndex: number;
+  marked: boolean;
+  seats: number;
+  companions: string[];
+};
+
 export default function App() {
 
   const [welcomeStage, setWelcomeStage] = useState<'show' | 'closing' | 'hidden'>('show');
@@ -50,7 +59,7 @@ export default function App() {
   const [lookupFirst, setLookupFirst] = useState('');
   const [lookupLast, setLookupLast] = useState('');
   const [lookupLoading, setLookupLoading] = useState(false);
-  const [lookupResults, setLookupResults] = useState<{ firstName: string; lastName: string; rowIndex: number; marked: boolean; seats: number }[] | null>(null);
+  const [lookupResults, setLookupResults] = useState<LookupMatch[] | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const LOOKUP_STORAGE_KEY = 'invitation_lookup_v1';
 
@@ -214,7 +223,7 @@ export default function App() {
     if (!f) { setLookupError('Please enter your first name.'); return; }
     setLookupLoading(true);
     try {
-      const url = 'https://script.google.com/macros/s/AKfycbygADG3T4AHcLGfQUsFxtdJ13aNMo1wqMqb68EZGEDl66tIKfwCSmqXZ8QBNi6eGudLnw/exec';
+      const url = 'https://script.google.com/macros/s/AKfycbzPOHTvX1oUkCOJ3yoNXAmMJBEKSAz8fmiWpaSjhwzIL4eOGAO1_QOpWoIiw0OCvk6ICQ/exec';
       const params = new URLSearchParams();
       params.append('firstName', f);
       params.append('lastName', l);
@@ -232,6 +241,11 @@ export default function App() {
         rowIndex: Number(m.rowIndex || 0),
         marked: Boolean(m.marked),
         seats: typeof m.seats === 'number' ? m.seats : Number(m.seats || 0) || 0,
+        companions: Array.isArray(m.companions)
+          ? m.companions
+              .map((entry: any) => String(entry || '').trim())
+              .filter((entry: string) => entry.length > 0)
+          : [],
       }));
       setLookupResults(normalized.slice(0, 1));
       if (!normalized.length) {
@@ -408,7 +422,13 @@ export default function App() {
 
   const ceremonySketchUrl = generatedSketches['ceremony'];
   const receptionSketchUrl = generatedSketches['reception'];
-  const hasResponded = !!(lookupResults && lookupResults.length === 1 && lookupResults[0].marked);
+  const primaryMatch = lookupResults && lookupResults.length === 1 ? lookupResults[0] : null;
+  const hasResponded = !!(primaryMatch && primaryMatch.marked);
+  const seatTotal = primaryMatch?.seats ?? 0;
+  const companionList = primaryMatch && seatTotal > 1
+    ? primaryMatch.companions.slice(0, Math.max(0, seatTotal - 1))
+    : [];
+  const extraSeatCount = seatTotal > 0 ? Math.max(0, seatTotal - 1 - companionList.length) : 0;
 
   const smoothScroll = (id: string) => {
     const target = document.getElementById(id);
@@ -513,7 +533,7 @@ export default function App() {
 
     try {
       setLoading(true);
-      const url = "https://script.google.com/macros/s/AKfycbxK-e_OOB2-KApZv2VzfCKpeRBecwOnfQ8l4jtVW3hFmpjbMRsg2zYtA-8zT7iVY51hFw/exec";
+      const url = "https://script.google.com/macros/s/AKfycbyZTzH33TN8wjNChk-Jgf8pxfK5OggmTQ4E6XE41Zk1S8GnwLe2AC1hJYSh50IwtTq3fQ/exec";
       const params = new URLSearchParams();
       Object.entries(data).forEach(([k, v]) => params.append(k, v == null ? "" : String(v)));
       const resp = await fetch(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: params.toString() });
@@ -803,6 +823,20 @@ export default function App() {
           <div className="max-w-md mx-auto text-center">
             <h2 className="font-script invitation-heading">RSVP</h2>
             <p className="theme-text-muted">Your RSVP has already been recorded. Thank you! Feel free to explore the rest of the site.</p>
+            {primaryMatch ? (
+              <div className="mt-6 theme-panel p-6 rounded-xl text-left bg-white/75">
+                <div className="font-semibold text-slate-700">Reserved party details</div>
+                <ul className="mt-2 space-y-1 list-disc ml-5">
+                  <li>{primaryMatch.firstName} {primaryMatch.lastName}</li>
+                  {companionList.map((name, idx) => (
+                    <li key={name + idx}>{name}</li>
+                  ))}
+                  {extraSeatCount > 0 ? (
+                    <li className="text-slate-600">Seat{extraSeatCount > 1 ? 's' : ''} available for additional companion{extraSeatCount > 1 ? 's' : ''}. Please reach out if we missed anyone.</li>
+                  ) : null}
+                </ul>
+              </div>
+            ) : null}
           </div>
         ) : (
         <div className="max-w-md mx-auto text-center">
@@ -864,6 +898,20 @@ export default function App() {
                 </select>
                 {attendance === 'Yes' ? (
                   <>
+                    {primaryMatch ? (
+                      <div className="text-left text-sm bg-white/70 border border-[rgba(11,114,133,0.2)] rounded-lg p-4">
+                        <div className="font-semibold text-slate-700">Reserved party details</div>
+                        <ul className="mt-2 space-y-1 list-disc ml-5">
+                          <li>{primaryMatch.firstName} {primaryMatch.lastName}</li>
+                          {companionList.map((name, idx) => (
+                            <li key={name + idx}>{name}</li>
+                          ))}
+                          {extraSeatCount > 0 ? (
+                            <li className="text-slate-600">Seat{extraSeatCount > 1 ? 's' : ''} available for additional companion{extraSeatCount > 1 ? 's' : ''}. Please list their names in the message if not shown above.</li>
+                          ) : null}
+                        </ul>
+                      </div>
+                    ) : null}
                     <div className="relative">
                       <input
                         type="number"
@@ -885,13 +933,13 @@ export default function App() {
                         readOnly={!!(lookupResults && lookupResults.length === 1)}
                       />
                       {lookupResults && lookupResults.length === 1 ? <span className="absolute top-1 right-2 text-[10px] text-slate-500">locked</span> : null}
-                      {lookupResults && lookupResults.length === 1 ? (
+                      {primaryMatch ? (
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-slate-500 pointer-events-none select-none uppercase tracking-wide">
                           Seats allocated
                         </span>
                       ) : null}
                     </div>
-                    {autoFillRef.current && guests !== '' && !(lookupResults && lookupResults.length === 1) ? (
+                    {autoFillRef.current && guests !== '' && !primaryMatch ? (
                       <div className="text-xs text-green-700 mt-1">Pre-filled from your reserved seats. Adjust if needed.</div>
                     ) : null}
                     <div className="text-left mt-2">
