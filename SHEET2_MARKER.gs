@@ -73,7 +73,31 @@ function _processRequest(params) {
   const markedVal = String(row[3] || '').trim(); // Column D marker (zero-based index 3)
   const seatsAllocatedRaw = row[2]; // Column C (zero-based index 2)
   const seatsAllocated = (typeof seatsAllocatedRaw === 'number') ? seatsAllocatedRaw : Number(seatsAllocatedRaw || 0) || 0;
-  matches.push({ firstName: rowFirst, lastName: rowLast, rowIndex: r + 1, marked: markedVal === 'Y', seats: seatsAllocated });
+  const companionLimit = seatsAllocated > 1 ? seatsAllocated - 1 : 0;
+  const rawCompanions = [];
+  if (companionLimit > 0) {
+    let scanRow = r;
+    while (scanRow < data.length && rawCompanions.length < companionLimit) {
+      const current = data[scanRow];
+      if (!current) break;
+      if (scanRow !== r) {
+        const nextLast = String(current[0] || '').trim();
+        const nextFirst = String(current[1] || '').trim();
+        if (nextLast || nextFirst) break;
+      }
+      const cell = current[4];
+      if (cell) {
+        const text = String(cell).trim();
+        if (text) {
+          const segments = text.split(/[\n,;]/).map(function(part) { return part.trim(); }).filter(function(part) { return part.length > 0; });
+          Array.prototype.push.apply(rawCompanions, segments.length ? segments : [text]);
+        }
+      }
+      scanRow++;
+    }
+  }
+  const companionEntries = companionLimit > 0 ? rawCompanions.slice(0, companionLimit) : [];
+  matches.push({ firstName: rowFirst, lastName: rowLast, rowIndex: r + 1, marked: markedVal === 'Y', seats: seatsAllocated, companions: companionEntries });
         if (!wantLookupOnly) {
           try {
             // Marker now recorded in Column D (4) instead of Column C (3)
