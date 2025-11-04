@@ -46,6 +46,13 @@ export default function App() {
   const [lastName, setLastName] = useState<string>("");
   const [message, setMessage] = useState<string>("");
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
+  // Invitation lookup state for "Find my Invitation"
+  const [lookupFirst, setLookupFirst] = useState('');
+  const [lookupLast, setLookupLast] = useState('');
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupResults, setLookupResults] = useState<{ firstName: string; lastName: string; rowIndex: number; marked: boolean; seats: number }[] | null>(null);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const LOOKUP_STORAGE_KEY = 'invitation_lookup_v1';
 
   const [dressModalOpen, setDressModalOpen] = useState(false);
   const [generatedSketches, setGeneratedSketches] = useState<Record<string, string>>({});
@@ -112,6 +119,15 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
+  // Always ensure we start scrolled to the top when landing or changing route
+  useEffect(() => {
+    // use setTimeout to allow layout to settle before forcing scroll
+    const id = window.setTimeout(() => {
+      try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch { window.scrollTo(0, 0); }
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [route]);
+
   useEffect(() => {
     updateNavGradients();
     const scroller = navScrollerRef.current;
@@ -170,16 +186,100 @@ export default function App() {
     } catch (e) {
       // ignore parse errors
     }
+    // restore lookup name fields
+    try {
+      const rl = localStorage.getItem(LOOKUP_STORAGE_KEY);
+      if (rl) {
+        const parsed = JSON.parse(rl);
+        setLookupFirst(parsed.lookupFirst || '');
+        setLookupLast(parsed.lookupLast || '');
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {
     const payload = { firstName, lastName, attendance, guests, highChair, highChairCount, message };
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch {}
+    try { localStorage.setItem(LOOKUP_STORAGE_KEY, JSON.stringify({ lookupFirst, lookupLast })); } catch {}
+  }, [firstName, lastName, attendance, guests, highChair, highChairCount, message, lookupFirst, lookupLast]);
+
+  const performInvitationLookup = useCallback(async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (lookupResults && lookupResults.length === 1) return; // already matched
+    setLookupError(null);
+    setLookupResults(null);
+    const f = lookupFirst.trim();
+    const l = lookupLast.trim();
+    if (!l) { setLookupError('Please enter your last name.'); return; }
+    if (!f) { setLookupError('Please enter your first name.'); return; }
+    setLookupLoading(true);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch (e) {
-      // ignore storage write errors
+      const url = 'https://script.google.com/macros/s/AKfycbygADG3T4AHcLGfQUsFxtdJ13aNMo1wqMqb68EZGEDl66tIKfwCSmqXZ8QBNi6eGudLnw/exec';
+      const params = new URLSearchParams();
+      params.append('firstName', f);
+      params.append('lastName', l);
+      params.append('mode', 'lookup');
+      let resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+      if (!resp.ok) resp = await fetch(url + '?' + params.toString(), { method: 'GET' });
+      if (!resp.ok) throw new Error('Lookup failed (' + resp.status + ')');
+      const json = await resp.json();
+      if (!json || !json.success) throw new Error(json && json.error ? json.error : 'Unknown server response');
+      const matchesRaw = Array.isArray(json.matches) ? json.matches : [];
+      const exact = matchesRaw.filter((m: any) => String(m.firstName || '').toLowerCase() === f.toLowerCase() && String(m.lastName || '').toLowerCase() === l.toLowerCase());
+      const normalized = exact.map((m: any) => ({
+        firstName: String(m.firstName || ''),
+        lastName: String(m.lastName || ''),
+        rowIndex: Number(m.rowIndex || 0),
+        marked: Boolean(m.marked),
+        seats: typeof m.seats === 'number' ? m.seats : Number(m.seats || 0) || 0,
+      }));
+      setLookupResults(normalized.slice(0, 1));
+      if (!normalized.length) {
+        // Granular error messaging using backend flags
+        if (json.lastNameMatched && !json.firstNameMatchedUnderLast) {
+          setLookupError('Last name found but first name did not match. Please check the spelling of your first name.');
+        } else if (!json.lastNameMatched) {
+          setLookupError('Last name not found. Please verify spelling or contact us if this seems incorrect.');
+        } else {
+          setLookupError('No matching invitation entry found. Please check spelling or reach out to us directly.');
+        }
+      } else {
+  try { localStorage.setItem(LOOKUP_STORAGE_KEY, JSON.stringify({ lookupFirst: f, lookupLast: l })); } catch {}
+      }
+    } catch (err: any) {
+      setLookupError(err.message || 'Unable to perform lookup.');
+    } finally {
+      setLookupLoading(false);
     }
-  }, [firstName, lastName, attendance, guests, highChair, highChairCount, message]);
+  }, [lookupFirst, lookupLast, lookupResults]);
+
+  // Track whether guests was auto-filled from lookup to allow user override without fighting the script.
+  const autoFillRef = useRef(false);
+  useEffect(() => {
+    // If we have a single lookup result with seats and guests not manually set, pre-fill.
+    if (lookupResults && lookupResults.length === 1) {
+      const seats = lookupResults[0].seats;
+      // Auto-fill name fields if not already set from previous edits
+      const lu = lookupResults[0];
+      if (!firstName.trim()) setFirstName(lu.firstName);
+      if (!lastName.trim()) setLastName(lu.lastName);
+      if (seats > 0 && (guests === '' || (autoFillRef.current && guests !== seats))) {
+        setGuests(seats);
+        autoFillRef.current = true;
+      }
+    }
+  }, [lookupResults]);
+
+  // If attendance changes to Yes after lookup, also attempt auto-fill if guests blank.
+  useEffect(() => {
+    if (attendance === 'Yes' && lookupResults && lookupResults.length === 1) {
+      const seats = lookupResults[0].seats;
+      if (seats > 0 && guests === '') {
+        setGuests(seats);
+        autoFillRef.current = true;
+      }
+    }
+  }, [attendance]);
 
   const venues = useMemo<VenueDetail[]>(() => ([
     {
@@ -308,6 +408,7 @@ export default function App() {
 
   const ceremonySketchUrl = generatedSketches['ceremony'];
   const receptionSketchUrl = generatedSketches['reception'];
+  const hasResponded = !!(lookupResults && lookupResults.length === 1 && lookupResults[0].marked);
 
   const smoothScroll = (id: string) => {
     const target = document.getElementById(id);
@@ -412,7 +513,7 @@ export default function App() {
 
     try {
       setLoading(true);
-      const url = "https://script.google.com/macros/s/AKfycbwETT8PYztSE02YihPf4wHl2CNSKqzT0IIAK5L-EsIZ83RpnFcKFzdqKyJKWhNWyBFVaA/exec";
+      const url = "https://script.google.com/macros/s/AKfycbxK-e_OOB2-KApZv2VzfCKpeRBecwOnfQ8l4jtVW3hFmpjbMRsg2zYtA-8zT7iVY51hFw/exec";
       const params = new URLSearchParams();
       Object.entries(data).forEach(([k, v]) => params.append(k, v == null ? "" : String(v)));
       const resp = await fetch(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: params.toString() });
@@ -446,14 +547,70 @@ export default function App() {
             <p className="welcome-greeting font-script">Mabuhay &amp; Welcome</p>
             <h2 id="welcome-dialog-title" className="welcome-names font-script">Jansen &amp; Danniele</h2>
             <p id="welcome-dialog-subtitle" className="welcome-subtitle">December 29, 2025 • Lucena City</p>
-            <p className="welcome-note">We’re so grateful to celebrate with you—find the schedule, venues, attire inspiration, and RSVP details inside.</p>
+            <p className="welcome-note">
+              {hasResponded
+                ? 'Thank you for responding—your RSVP is recorded. Feel free to explore the schedule, venues, attire inspiration, and more below.'
+                : 'We’re so grateful to celebrate with you—find the schedule, venues, attire inspiration, and RSVP details inside.'}
+            </p>
+            <div className="invite-lookup mt-4 p-4 rounded-lg bg-white/70 backdrop-blur-sm">
+              <h3 className="text-sm font-semibold mb-2">Find my Invitation</h3>
+              <form onSubmit={performInvitationLookup} className="grid gap-2" aria-label="Find my Invitation form">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder="Last Name"
+                    value={lookupLast}
+                    onChange={(e) => setLookupLast(e.target.value)}
+                    className="p-2 border rounded text-sm"
+                    aria-label="Last Name for lookup"
+                  />
+                  <input
+                    type="text"
+                    placeholder="First Name"
+                    value={lookupFirst}
+                    onChange={(e) => setLookupFirst(e.target.value)}
+                    className="p-2 border rounded text-sm"
+                    aria-label="First Name for lookup"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={!!(lookupLoading || (lookupResults && lookupResults.length === 1))}
+                  className={`mt-1 theme-btn px-3 py-2 rounded-full text-xs ${(lookupLoading || (lookupResults && lookupResults.length === 1)) ? 'opacity-60 cursor-not-allowed' : ''}`}
+                >{lookupLoading ? 'Searching…' : (lookupResults && lookupResults.length === 1 ? 'Match Found' : 'Search Invitation')}</button>
+              </form>
+              {lookupError ? <p className="text-xs mt-2 text-red-600" role="alert">{lookupError}</p> : null}
+              {lookupResults && lookupResults.length ? (
+                <div className="mt-2 text-xs">
+                  <p className="font-semibold">Match{lookupResults.length > 1 ? 'es' : ''} ({lookupResults.length}):</p>
+                  <ul className="list-disc ml-4 mt-1 space-y-1">
+                    {lookupResults.map((m) => {
+                      const seatMsg = m.seats > 0 ? ` — We have reserved ${m.seats} seat${m.seats > 1 ? 's' : ''} for you${m.seats > 1 ? ' and your party' : ''}.` : '';
+                      return (
+                        <li key={m.rowIndex}>{m.firstName} {m.lastName}{m.marked ? ' • RSVP recorded' : ''}{seatMsg}</li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
             <button
               type="button"
-              className="welcome-skip theme-btn"
-              onClick={dismissWelcome}
+              className={`welcome-skip theme-btn ${(!lookupResults || !lookupResults.length) ? 'opacity-60 cursor-not-allowed' : ''}`}
+              onClick={() => {
+                if (!lookupResults || !lookupResults.length) return;
+                dismissWelcome();
+              }}
+              disabled={!lookupResults || !lookupResults.length}
+              aria-disabled={!lookupResults || !lookupResults.length}
             >
               Enter Site
             </button>
+            {(!lookupResults || !lookupResults.length) ? (
+              <p className="mt-2 text-[11px] text-slate-600">Please search and confirm your name above to enter the site.</p>
+            ) : hasResponded ? (
+              <p className="mt-2 text-[11px] text-green-700">You already responded — enjoy browsing the site.</p>
+            ) : null}
             <p className="welcome-tip">Using Messenger or Facebook’s browser? For the best experience, open this link in Chrome so all maps and images load properly.</p>
           </div>
         </div>
@@ -642,33 +799,47 @@ export default function App() {
       </section>
 
       <section id="rsvp" className="py-20 bg-transparent">
+        {hasResponded ? (
+          <div className="max-w-md mx-auto text-center">
+            <h2 className="font-script invitation-heading">RSVP</h2>
+            <p className="theme-text-muted">Your RSVP has already been recorded. Thank you! Feel free to explore the rest of the site.</p>
+          </div>
+        ) : (
         <div className="max-w-md mx-auto text-center">
-      <h2 className="font-script invitation-heading">RSVP</h2>
-      <p className="theme-text-muted">Please RSVP by <strong>December 1, 2025</strong>. Use the form below to confirm attendance, number of guests, and any high chair needs.</p>
+          <h2 className="font-script invitation-heading">RSVP</h2>
+          <p className="theme-text-muted">Please RSVP by <strong>December 1, 2025</strong>. Use the form below to confirm attendance, number of guests, and any high chair needs.</p>
           {!submitted ? (
             <div className="mt-6 theme-panel p-8 rounded-xl shadow-md">
               <form onSubmit={handleSubmit} className="grid gap-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <input
-                    type="text"
-                    name="lastName"
-                    placeholder="Last Name"
-                    className={`p-3 border rounded ${errors.lastName ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
-                    value={lastName}
-                    onChange={(e) => { setLastName(e.target.value); if (errors.lastName) setErrors((s) => ({ ...s, lastName: undefined })); }}
-                    aria-invalid={Boolean(errors.lastName)}
-                    title={errors.lastName || undefined}
-                  />
-                  <input
-                    type="text"
-                    name="firstName"
-                    placeholder="First Name"
-                    className={`p-3 border rounded ${errors.firstName ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
-                    value={firstName}
-                    onChange={(e) => { setFirstName(e.target.value); if (errors.firstName) setErrors((s) => ({ ...s, firstName: undefined })); }}
-                    aria-invalid={Boolean(errors.firstName)}
-                    title={errors.firstName || undefined}
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="lastName"
+                      placeholder="Last Name"
+                      className={`p-3 border rounded w-full ${errors.lastName ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''} ${lookupResults && lookupResults.length === 1 ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      value={lastName}
+                      onChange={(e) => { if (!(lookupResults && lookupResults.length === 1)) { setLastName(e.target.value); if (errors.lastName) setErrors((s) => ({ ...s, lastName: undefined })); } }}
+                      aria-invalid={Boolean(errors.lastName)}
+                      title={errors.lastName || undefined}
+                      readOnly={!!(lookupResults && lookupResults.length === 1)}
+                    />
+                    {lookupResults && lookupResults.length === 1 ? <span className="absolute top-1 right-2 text-[10px] text-slate-500">locked</span> : null}
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="firstName"
+                      placeholder="First Name"
+                      className={`p-3 border rounded w-full ${errors.firstName ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''} ${lookupResults && lookupResults.length === 1 ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      value={firstName}
+                      onChange={(e) => { if (!(lookupResults && lookupResults.length === 1)) { setFirstName(e.target.value); if (errors.firstName) setErrors((s) => ({ ...s, firstName: undefined })); } }}
+                      aria-invalid={Boolean(errors.firstName)}
+                      title={errors.firstName || undefined}
+                      readOnly={!!(lookupResults && lookupResults.length === 1)}
+                    />
+                    {lookupResults && lookupResults.length === 1 ? <span className="absolute top-1 right-2 text-[10px] text-slate-500">locked</span> : null}
+                  </div>
                 </div>
                 <select
                   name="attendance"
@@ -693,21 +864,36 @@ export default function App() {
                 </select>
                 {attendance === 'Yes' ? (
                   <>
-                    <input
-                      type="number"
-                      name="guests"
-                      placeholder="No. of Guests (incl. you)"
-                      min={1}
-                      className={`p-3 border rounded ${errors.guests ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
-                      value={guests}
-                      onChange={(e) => {
-                        const v = e.target.value === '' ? '' : Number(e.target.value);
-                        setGuests(v);
-                        if (errors.guests) setErrors((s) => ({ ...s, guests: undefined }));
-                      }}
-                      aria-invalid={Boolean(errors.guests)}
-                      title={errors.guests || undefined}
-                    />
+                    <div className="relative">
+                      <input
+                        type="number"
+                        name="guests"
+                        placeholder={lookupResults && lookupResults.length === 1 ? '' : 'No. of Guests (incl. you)'}
+                        min={1}
+                        className={`p-3 border rounded w-full ${errors.guests ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''} ${(lookupResults && lookupResults.length === 1) ? 'bg-gray-100 cursor-not-allowed pl-28' : ''}`}
+                        value={guests}
+                        onChange={(e) => {
+                          if (!(lookupResults && lookupResults.length === 1)) {
+                            const v = e.target.value === '' ? '' : Number(e.target.value);
+                            setGuests(v);
+                            autoFillRef.current = false; // user manually edited
+                            if (errors.guests) setErrors((s) => ({ ...s, guests: undefined }));
+                          }
+                        }}
+                        aria-invalid={Boolean(errors.guests)}
+                        title={errors.guests || undefined}
+                        readOnly={!!(lookupResults && lookupResults.length === 1)}
+                      />
+                      {lookupResults && lookupResults.length === 1 ? <span className="absolute top-1 right-2 text-[10px] text-slate-500">locked</span> : null}
+                      {lookupResults && lookupResults.length === 1 ? (
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-slate-500 pointer-events-none select-none uppercase tracking-wide">
+                          Seats allocated
+                        </span>
+                      ) : null}
+                    </div>
+                    {autoFillRef.current && guests !== '' && !(lookupResults && lookupResults.length === 1) ? (
+                      <div className="text-xs text-green-700 mt-1">Pre-filled from your reserved seats. Adjust if needed.</div>
+                    ) : null}
                     <div className="text-left mt-2">
                       <div className="mb-2">Do you need a high chair?</div>
                       <div className="flex items-center gap-4">
@@ -784,6 +970,7 @@ export default function App() {
             <p className="mt-6 theme-text-muted text-xl">Thanks! We received your RSVP.</p>
           )}
         </div>
+        )}
       </section>
 
       <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="scroll-top-btn" aria-label="Scroll to top">↑</button>
