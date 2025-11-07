@@ -40,6 +40,7 @@ type CompanionSelection = {
 };
 
 const APPS_SCRIPT_ENDPOINT = "https://script.google.com/macros/s/AKfycby7HVUh1y_6TztBfEBvSHIwbrTMwgEpH5fbks81b8708r_MTb4TITABLItRmC-tnqX3Lw/exec";
+const AUDIO_SRC = "/assets/Palagi%20-%20TJ%20Monterde.mp3";
 
 export default function App() {
 
@@ -69,11 +70,30 @@ export default function App() {
   const [lookupResults, setLookupResults] = useState<LookupMatch[] | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [companionSelections, setCompanionSelections] = useState<CompanionSelection[]>([]);
+  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
 
   const [dressModalOpen, setDressModalOpen] = useState(false);
   const [generatedSketches, setGeneratedSketches] = useState<Record<string, string>>({});
   const navContainerRef = useRef<HTMLDivElement | null>(null);
   const navScrollerRef = useRef<HTMLDivElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const floatingButtonRef = useRef<HTMLButtonElement | null>(null);
+  const floatingDragRef = useRef<{
+    pointerId: number;
+    offsetX: number;
+    offsetY: number;
+    width: number;
+    height: number;
+    originClientX: number;
+    originClientY: number;
+    startX: number;
+    startY: number;
+    moved: boolean;
+  } | null>(null);
+  const ignoreNextFloatingClickRef = useRef(false);
+  const hasPositionedFloatingRef = useRef(false);
+  const [isDraggingFloating, setIsDraggingFloating] = useState(false);
+  const [floatingPos, setFloatingPos] = useState<{ x: number; y: number }>(() => ({ x: 16, y: 16 }));
 
   useEffect(() => {
     if (welcomeStage === 'hidden') {
@@ -94,7 +114,151 @@ export default function App() {
       setWelcomeStage('hidden');
       manualHideTimeoutRef.current = null;
     }, 420);
+
   }, [welcomeStage]);
+
+  const startMusic = useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    try {
+      if (audio.paused) {
+        await audio.play();
+        setIsMusicPlaying(true);
+      }
+    } catch (err) {
+      // ignore autoplay rejection
+    }
+  }, []);
+
+  const toggleMusic = useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) {
+      try {
+        await audio.play();
+        setIsMusicPlaying(true);
+      } catch (err) {
+        // ignore autoplay rejection
+      }
+    } else {
+      audio.pause();
+      setIsMusicPlaying(false);
+    }
+  }, []);
+
+  const handleFloatingPointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    const button = event.currentTarget;
+    const rect = button.getBoundingClientRect();
+    floatingDragRef.current = {
+      pointerId: event.pointerId,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+      width: rect.width,
+      height: rect.height,
+      originClientX: event.clientX,
+      originClientY: event.clientY,
+      startX: floatingPos.x,
+      startY: floatingPos.y,
+      moved: false,
+    };
+    ignoreNextFloatingClickRef.current = false;
+    setIsDraggingFloating(true);
+    try {
+      button.setPointerCapture(event.pointerId);
+    } catch {
+      // pointer capture may fail on some browsers; safe to ignore
+    }
+  }, [floatingPos]);
+
+  const handleFloatingPointerMove = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    const state = floatingDragRef.current;
+    if (!state || state.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    const padding = 8;
+    const maxX = Math.max(padding, window.innerWidth - state.width - padding);
+    const maxY = Math.max(padding, window.innerHeight - state.height - padding);
+    const nextX = Math.min(Math.max(padding, event.clientX - state.offsetX), maxX);
+    const nextY = Math.min(Math.max(padding, event.clientY - state.offsetY), maxY);
+    if (!state.moved) {
+      const deltaX = Math.abs(event.clientX - state.originClientX);
+      const deltaY = Math.abs(event.clientY - state.originClientY);
+      const deltaPosX = Math.abs(nextX - state.startX);
+      const deltaPosY = Math.abs(nextY - state.startY);
+      const threshold = 6;
+      if (deltaX > threshold || deltaY > threshold || deltaPosX > threshold || deltaPosY > threshold) {
+        state.moved = true;
+        ignoreNextFloatingClickRef.current = true;
+      }
+    }
+    setFloatingPos((prev) => {
+      if (prev.x === nextX && prev.y === nextY) return prev;
+      return { x: nextX, y: nextY };
+    });
+  }, []);
+
+  const handleFloatingPointerUp = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    const state = floatingDragRef.current;
+    if (!state || state.pointerId !== event.pointerId) return;
+    floatingDragRef.current = null;
+    setIsDraggingFloating(false);
+    if (state.moved) {
+      ignoreNextFloatingClickRef.current = true;
+      event.preventDefault();
+      event.stopPropagation();
+    } else {
+      ignoreNextFloatingClickRef.current = false;
+    }
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      // ignore release failures
+    }
+  }, []);
+
+  const handleFloatingPointerCancel = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    const state = floatingDragRef.current;
+    if (!state || state.pointerId !== event.pointerId) return;
+    floatingDragRef.current = null;
+    setIsDraggingFloating(false);
+    ignoreNextFloatingClickRef.current = true;
+    event.preventDefault();
+    event.stopPropagation();
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      // ignore release failures
+    }
+  }, []);
+
+  const handleFloatingClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    if (ignoreNextFloatingClickRef.current) {
+      ignoreNextFloatingClickRef.current = false;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    toggleMusic();
+  }, [toggleMusic]);
+
+  const handleEnterSite = useCallback(async () => {
+    if (!lookupResults || !lookupResults.length) return;
+    await startMusic();
+    dismissWelcome();
+  }, [lookupResults, startMusic, dismissWelcome]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.volume = 0.6;
+    const onPlay = () => setIsMusicPlaying(true);
+    const onPause = () => setIsMusicPlaying(false);
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
+    return () => {
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
+    };
+  }, []);
 
   const updateNavGradients = useCallback(() => {
     const container = navContainerRef.current;
@@ -185,6 +349,42 @@ export default function App() {
   }, [route]);
 
   const STORAGE_KEY = "rsvp_form_v1";
+  const isEntourage = route === 'entourage';
+  const showFloatingControl = isEntourage || welcomeStage === 'hidden';
+
+  useEffect(() => {
+    if (!showFloatingControl) return;
+    const alignWithinViewport = () => {
+      const button = floatingButtonRef.current;
+      const rect = button ? button.getBoundingClientRect() : null;
+  const width = rect?.width ?? 56;
+  const height = rect?.height ?? 56;
+      const padding = 12;
+      const maxX = Math.max(padding, window.innerWidth - width - padding);
+      const maxY = Math.max(padding, window.innerHeight - height - padding);
+      setFloatingPos((pos) => {
+        const nextX = Math.min(Math.max(padding, pos.x), maxX);
+        const nextY = Math.min(Math.max(padding, pos.y), maxY);
+        if (pos.x === nextX && pos.y === nextY) return pos;
+        return { x: nextX, y: nextY };
+      });
+    };
+
+    if (!hasPositionedFloatingRef.current) {
+      hasPositionedFloatingRef.current = true;
+      const padding = 16;
+      const initialY = padding;
+      setFloatingPos((prev) => {
+        if (prev.x === padding && prev.y === initialY) return prev;
+        return { x: padding, y: initialY };
+      });
+    } else {
+      alignWithinViewport();
+    }
+
+    window.addEventListener('resize', alignWithinViewport);
+    return () => window.removeEventListener('resize', alignWithinViewport);
+  }, [showFloatingControl]);
 
   useEffect(() => {
     try {
@@ -575,13 +775,18 @@ export default function App() {
     }
   };
 
-  if (route === 'entourage') {
-    return <EntouragePage onBack={() => { window.location.hash = ''; setRoute('home'); }} />;
-  }
+  const showWelcomeOverlay = !isEntourage && welcomeStage !== 'hidden';
 
   return (
-    <div className="app-content font-sans text-gray-800 relative z-10">
-      {welcomeStage !== 'hidden' ? (
+    <>
+      <audio ref={audioRef} src={AUDIO_SRC} preload="auto" loop />
+      {isEntourage ? (
+        <EntouragePage
+          onBack={() => { window.location.hash = ''; setRoute('home'); }}
+        />
+      ) : (
+        <div className="app-content font-sans text-gray-800 relative z-10">
+          {showWelcomeOverlay ? (
         <div
           className={`welcome-overlay ${welcomeStage === 'closing' ? 'closing' : ''}`}
           role="dialog"
@@ -644,10 +849,7 @@ export default function App() {
             <button
               type="button"
               className={`welcome-skip theme-btn ${(!lookupResults || !lookupResults.length) ? 'opacity-60 cursor-not-allowed' : ''}`}
-              onClick={() => {
-                if (!lookupResults || !lookupResults.length) return;
-                dismissWelcome();
-              }}
+              onClick={handleEnterSite}
               disabled={!lookupResults || !lookupResults.length}
               aria-disabled={!lookupResults || !lookupResults.length}
             >
@@ -663,7 +865,7 @@ export default function App() {
         </div>
       ) : null}
       <nav className="fixed w-full bg-white/60 backdrop-blur-md shadow z-20 theme-invitation-bg">
-        <div className="max-w-4xl mx-auto flex justify-between items-center p-4">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row sm:items-center gap-3 p-4">
           <div ref={navContainerRef} className="nav-container relative w-full">
             <div ref={navScrollerRef} className="nav-links flex gap-4 sm:gap-6 overflow-x-auto whitespace-nowrap py-1 px-1 sm:px-0">
             {['Home', 'Venues', 'Dress Code', 'Gifts', 'RSVP', 'Entourage'].map((label) => {
@@ -1086,11 +1288,47 @@ export default function App() {
         )}
       </section>
 
-      <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="scroll-top-btn" aria-label="Scroll to top">↑</button>
-    </div>
+        <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="scroll-top-btn" aria-label="Scroll to top">↑</button>
+        </div>
+      )}
+      {showFloatingControl ? (
+        <button
+          ref={floatingButtonRef}
+          type="button"
+          onClick={handleFloatingClick}
+          onPointerDown={handleFloatingPointerDown}
+          onPointerMove={handleFloatingPointerMove}
+          onPointerUp={handleFloatingPointerUp}
+          onPointerCancel={handleFloatingPointerCancel}
+          aria-label={isMusicPlaying ? 'Pause background music' : 'Play background music'}
+          aria-pressed={isMusicPlaying}
+          title="Drag to reposition the audio control"
+          data-dragging={isDraggingFloating ? 'true' : 'false'}
+          className="fixed inline-flex items-center justify-center w-12 h-12 rounded-full shadow-lg border border-[rgba(11,114,133,0.35)] bg-white/90 backdrop-blur-sm text-[rgba(11,114,133,0.95)] hover:text-green-600 hover:border-[rgba(11,114,133,0.55)] z-30 select-none"
+          style={{
+            left: floatingPos.x,
+            top: floatingPos.y,
+            touchAction: 'none',
+            cursor: isDraggingFloating ? 'grabbing' : 'grab',
+          }}
+        >
+          <span className="sr-only">{isMusicPlaying ? 'Pause music playback' : 'Play music playback'}</span>
+          <span aria-hidden="true" className="pointer-events-none text-[18px] flex items-center justify-center">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" role="presentation">
+              <path d="M4 9v6h4l5 4V5L8 9H4z"></path>
+              <path d="M16.5 12c0-1.8-.8-3.4-2.1-4.5v9c1.3-1.1 2.1-2.7 2.1-4.5z" opacity="0.7"></path>
+              <path d="M18.5 3.6v2.2c2.6 1.2 4.5 4 4.5 6.9s-1.9 5.7-4.5 6.9v2.2c3.4-1.3 6-4.8 6-9.1s-2.6-7.8-6-9.1z" opacity="0.45"></path>
+            </svg>
+          </span>
+          {!isMusicPlaying ? (
+            <span className="pointer-events-none absolute -top-1.5 -right-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-500 text-white text-[10px] font-semibold" aria-hidden="true">×</span>
+          ) : null}
+        </button>
+      ) : null}
+    </>
   );
 }
-function EntouragePage({ onBack }: { onBack: () => void }) {
+function EntouragePage({ onBack }: { onBack: () => void; }) {
   const sections: EntourageSection[] = ENTOURAGE_SECTIONS;
   const groupEntries = useMemo(() => {
     const grouped = sections.reduce<Record<string, EntourageSection[]>>((acc, section) => {
@@ -1104,10 +1342,8 @@ function EntouragePage({ onBack }: { onBack: () => void }) {
   return (
     <div className="app-content font-sans text-gray-800 relative z-10">
       <nav className="fixed w-full bg-white/60 backdrop-blur-md shadow z-20 theme-invitation-bg">
-        <div className="max-w-4xl mx-auto flex justify-between items-center p-4">
-          <div className="space-x-6">
-            <button onClick={onBack} className="cursor-pointer hover:text-green-600">Home</button>
-          </div>
+        <div className="max-w-4xl mx-auto flex justify-between items-center gap-3 p-4">
+          <button onClick={onBack} className="cursor-pointer hover:text-green-600">Home</button>
         </div>
       </nav>
 
