@@ -266,11 +266,10 @@ export default function App() {
   useEffect(() => {
     // If we have a single lookup result with seats and guests not manually set, pre-fill.
     if (lookupResults && lookupResults.length === 1) {
-      const seats = lookupResults[0].seats;
-      // Auto-fill name fields if not already set from previous edits
       const lu = lookupResults[0];
-      if (!firstName.trim()) setFirstName(lu.firstName);
-      if (!lastName.trim()) setLastName(lu.lastName);
+      const seats = lu.seats;
+      if (firstName.trim() !== lu.firstName.trim()) setFirstName(lu.firstName);
+      if (lastName.trim() !== lu.lastName.trim()) setLastName(lu.lastName);
       if (seats > 0 && (guests === '' || (autoFillRef.current && guests !== seats))) {
         setGuests(seats);
         autoFillRef.current = true;
