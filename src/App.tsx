@@ -34,6 +34,13 @@ type LookupMatch = {
   companions: string[];
 };
 
+type CompanionSelection = {
+  name: string;
+  attending: boolean;
+};
+
+const APPS_SCRIPT_ENDPOINT = "https://script.google.com/macros/s/AKfycby7HVUh1y_6TztBfEBvSHIwbrTMwgEpH5fbks81b8708r_MTb4TITABLItRmC-tnqX3Lw/exec";
+
 export default function App() {
 
   const [welcomeStage, setWelcomeStage] = useState<'show' | 'closing' | 'hidden'>('show');
@@ -61,7 +68,7 @@ export default function App() {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupResults, setLookupResults] = useState<LookupMatch[] | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
-  const LOOKUP_STORAGE_KEY = 'invitation_lookup_v1';
+  const [companionSelections, setCompanionSelections] = useState<CompanionSelection[]>([]);
 
   const [dressModalOpen, setDressModalOpen] = useState(false);
   const [generatedSketches, setGeneratedSketches] = useState<Record<string, string>>({});
@@ -195,22 +202,12 @@ export default function App() {
     } catch (e) {
       // ignore parse errors
     }
-    // restore lookup name fields
-    try {
-      const rl = localStorage.getItem(LOOKUP_STORAGE_KEY);
-      if (rl) {
-        const parsed = JSON.parse(rl);
-        setLookupFirst(parsed.lookupFirst || '');
-        setLookupLast(parsed.lookupLast || '');
-      }
-    } catch {}
   }, []);
 
   useEffect(() => {
     const payload = { firstName, lastName, attendance, guests, highChair, highChairCount, message };
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch {}
-    try { localStorage.setItem(LOOKUP_STORAGE_KEY, JSON.stringify({ lookupFirst, lookupLast })); } catch {}
-  }, [firstName, lastName, attendance, guests, highChair, highChairCount, message, lookupFirst, lookupLast]);
+  }, [firstName, lastName, attendance, guests, highChair, highChairCount, message]);
 
   const performInvitationLookup = useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -223,13 +220,12 @@ export default function App() {
     if (!f) { setLookupError('Please enter your first name.'); return; }
     setLookupLoading(true);
     try {
-      const url = 'https://script.google.com/macros/s/AKfycbzPOHTvX1oUkCOJ3yoNXAmMJBEKSAz8fmiWpaSjhwzIL4eOGAO1_QOpWoIiw0OCvk6ICQ/exec';
-      const params = new URLSearchParams();
+  const params = new URLSearchParams();
       params.append('firstName', f);
       params.append('lastName', l);
       params.append('mode', 'lookup');
-      let resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
-      if (!resp.ok) resp = await fetch(url + '?' + params.toString(), { method: 'GET' });
+  let resp = await fetch(APPS_SCRIPT_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+  if (!resp.ok) resp = await fetch(APPS_SCRIPT_ENDPOINT + '?' + params.toString(), { method: 'GET' });
       if (!resp.ok) throw new Error('Lookup failed (' + resp.status + ')');
       const json = await resp.json();
       if (!json || !json.success) throw new Error(json && json.error ? json.error : 'Unknown server response');
@@ -257,8 +253,6 @@ export default function App() {
         } else {
           setLookupError('No matching invitation entry found. Please check spelling or reach out to us directly.');
         }
-      } else {
-  try { localStorage.setItem(LOOKUP_STORAGE_KEY, JSON.stringify({ lookupFirst: f, lookupLast: l })); } catch {}
       }
     } catch (err: any) {
       setLookupError(err.message || 'Unable to perform lookup.');
@@ -425,10 +419,39 @@ export default function App() {
   const primaryMatch = lookupResults && lookupResults.length === 1 ? lookupResults[0] : null;
   const hasResponded = !!(primaryMatch && primaryMatch.marked);
   const seatTotal = primaryMatch?.seats ?? 0;
-  const companionList = primaryMatch && seatTotal > 1
-    ? primaryMatch.companions.slice(0, Math.max(0, seatTotal - 1))
-    : [];
+  const companionList = useMemo<string[]>(() => {
+    if (!primaryMatch) return [];
+    if (!primaryMatch.seats || primaryMatch.seats <= 1) return [];
+    return primaryMatch.companions.slice(0, Math.max(0, primaryMatch.seats - 1));
+  }, [primaryMatch]);
   const extraSeatCount = seatTotal > 0 ? Math.max(0, seatTotal - 1 - companionList.length) : 0;
+
+  useEffect(() => {
+    if (!companionList.length) {
+      setCompanionSelections([]);
+      return;
+    }
+    setCompanionSelections((prev) => {
+      const sameOrder = prev.length === companionList.length && prev.every((entry, idx) => entry.name === companionList[idx]);
+      if (sameOrder) return prev;
+      return companionList.map((name, idx) => {
+        const existing = prev[idx];
+        return existing && existing.name === name ? existing : { name, attending: true };
+      });
+    });
+  }, [companionList]);
+
+  const selectedCompanionCount = useMemo(() => companionSelections.reduce((acc, entry) => acc + (entry.attending ? 1 : 0), 0), [companionSelections]);
+
+  useEffect(() => {
+    if (!primaryMatch) return;
+    if (attendance !== 'Yes') return;
+    const currentGuests = typeof guests === 'number' ? guests : Number(guests) || 0;
+    const computedGuests = 1 + selectedCompanionCount;
+    if (currentGuests !== computedGuests) {
+      setGuests(computedGuests);
+    }
+  }, [attendance, selectedCompanionCount, primaryMatch, guests]);
 
   const smoothScroll = (id: string) => {
     const target = document.getElementById(id);
@@ -529,14 +552,19 @@ export default function App() {
       highChair: highChair || "",
       highChairCount: highChairCount === "" ? null : highChairCount,
       message,
+      companionStatus: companionSelections.length
+        ? JSON.stringify(companionSelections.map((entry) => ({
+            name: entry.name,
+            attending: attendance === 'Yes' ? entry.attending : false,
+          })))
+        : "",
     };
 
     try {
       setLoading(true);
-      const url = "https://script.google.com/macros/s/AKfycbyZTzH33TN8wjNChk-Jgf8pxfK5OggmTQ4E6XE41Zk1S8GnwLe2AC1hJYSh50IwtTq3fQ/exec";
       const params = new URLSearchParams();
       Object.entries(data).forEach(([k, v]) => params.append(k, v == null ? "" : String(v)));
-      const resp = await fetch(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: params.toString() });
+      const resp = await fetch(APPS_SCRIPT_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: params.toString() });
       if (!resp.ok) throw new Error(`Server returned ${resp.status}`);
       await resp.json().catch(() => ({}));
       setSubmitted(true);
@@ -901,15 +929,53 @@ export default function App() {
                     {primaryMatch ? (
                       <div className="text-left text-sm bg-white/70 border border-[rgba(11,114,133,0.2)] rounded-lg p-4">
                         <div className="font-semibold text-slate-700">Reserved party details</div>
-                        <ul className="mt-2 space-y-1 list-disc ml-5">
-                          <li>{primaryMatch.firstName} {primaryMatch.lastName}</li>
-                          {companionList.map((name, idx) => (
-                            <li key={name + idx}>{name}</li>
-                          ))}
-                          {extraSeatCount > 0 ? (
-                            <li className="text-slate-600">Seat{extraSeatCount > 1 ? 's' : ''} available for additional companion{extraSeatCount > 1 ? 's' : ''}. Please list their names in the message if not shown above.</li>
-                          ) : null}
-                        </ul>
+                        <div className="mt-2 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span>{primaryMatch.firstName} {primaryMatch.lastName}</span>
+                            <span className="text-[11px] uppercase tracking-wide text-slate-500">(You)</span>
+                          </div>
+                        </div>
+                        {companionList.length ? (
+                          <div className="mt-3 pt-3 border-t border-[rgba(11,114,133,0.18)]">
+                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Companion attendance</div>
+                            <p className="text-xs text-slate-500 mt-1">Tick the companions who can join you so we can reserve their seats.</p>
+                            <ul className="mt-2 space-y-2">
+                              {companionList.map((name, idx) => {
+                                const selection = companionSelections[idx] && companionSelections[idx].name === name
+                                  ? companionSelections[idx]
+                                  : { name, attending: true };
+                                return (
+                                  <li key={name + idx}>
+                                    <label className="inline-flex items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={selection.attending}
+                                        onChange={(e) => {
+                                          const next = e.target.checked;
+                                          setCompanionSelections((prev) => companionList.map((companionName, compIdx) => {
+                                            if (compIdx === idx) {
+                                              return { name: companionName, attending: next };
+                                            }
+                                            const existing = prev[compIdx];
+                                            if (existing && existing.name === companionName) {
+                                              return existing;
+                                            }
+                                            return { name: companionName, attending: true };
+                                          }));
+                                        }}
+                                      />
+                                      <span>{name}</span>
+                                    </label>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                            <div className="text-[11px] text-slate-500 mt-2">Selected {selectedCompanionCount} of {companionList.length} companion{companionList.length === 1 ? '' : 's'}.</div>
+                          </div>
+                        ) : null}
+                        {extraSeatCount > 0 ? (
+                          <div className="mt-3 text-xs text-slate-600">Seat{extraSeatCount > 1 ? 's' : ''} available for additional companion{extraSeatCount > 1 ? 's' : ''}. Please list their names in the message if not shown above.</div>
+                        ) : null}
                       </div>
                     ) : null}
                     <div className="relative">
