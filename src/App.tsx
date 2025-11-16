@@ -71,6 +71,7 @@ export default function App() {
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [companionSelections, setCompanionSelections] = useState<CompanionSelection[]>([]);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const [browseWithoutRsvp, setBrowseWithoutRsvp] = useState(false);
 
   const [dressModalOpen, setDressModalOpen] = useState(false);
   const [generatedSketches, setGeneratedSketches] = useState<Record<string, string>>({});
@@ -242,9 +243,15 @@ export default function App() {
 
   const handleEnterSite = useCallback(async () => {
     if (!lookupResults || !lookupResults.length) return;
+    setBrowseWithoutRsvp(false);
     await startMusic();
     dismissWelcome();
   }, [lookupResults, startMusic, dismissWelcome]);
+
+  const handlePreviewBrowse = useCallback(() => {
+    setBrowseWithoutRsvp(true);
+    dismissWelcome();
+  }, [dismissWelcome]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -624,6 +631,7 @@ export default function App() {
     return primaryMatch.companions.slice(0, Math.max(0, primaryMatch.seats - 1));
   }, [primaryMatch]);
   const extraSeatCount = seatTotal > 0 ? Math.max(0, seatTotal - 1 - companionList.length) : 0;
+  const canShowRsvpForm = Boolean(primaryMatch) && !browseWithoutRsvp && !submitted;
 
   useEffect(() => {
     if (!companionList.length) {
@@ -724,6 +732,66 @@ export default function App() {
     }
   }, []);
 
+  const renderInvitationLookup = (variant: 'overlay' | 'inline') => {
+    const isOverlay = variant === 'overlay';
+    const containerClass = isOverlay
+      ? "invite-lookup mt-4 p-4 rounded-lg bg-white/70 backdrop-blur-sm"
+      : "mt-6 theme-panel p-6 rounded-xl bg-white/85 text-left";
+    const headingClass = isOverlay ? "text-sm font-semibold mb-2" : "text-base font-semibold mb-1";
+    const gridClass = isOverlay ? "grid grid-cols-1 sm:grid-cols-2 gap-2" : "grid grid-cols-1 sm:grid-cols-2 gap-3";
+    const inputClass = isOverlay ? "p-2 border rounded text-sm" : "p-3 border rounded";
+    const buttonClass = isOverlay
+      ? `mt-1 theme-btn px-3 py-2 rounded-full text-xs ${(lookupLoading || (lookupResults && lookupResults.length === 1)) ? 'opacity-60 cursor-not-allowed' : ''}`
+      : `mt-2 theme-btn px-4 py-2 rounded-full text-sm ${(lookupLoading || (lookupResults && lookupResults.length === 1)) ? 'opacity-60 cursor-not-allowed' : ''}`;
+    return (
+      <div className={containerClass}>
+        <h3 className={headingClass}>Find my Invitation</h3>
+        {!isOverlay ? (
+          <p className="text-sm text-slate-600 mb-3">We’ll unlock the RSVP form once we confirm your invitation below.</p>
+        ) : null}
+        <form onSubmit={performInvitationLookup} className="grid gap-2" aria-label="Find my Invitation form">
+          <div className={gridClass}>
+            <input
+              type="text"
+              placeholder="Last Name"
+              value={lookupLast}
+              onChange={(e) => setLookupLast(e.target.value)}
+              className={inputClass}
+              aria-label="Last Name for lookup"
+            />
+            <input
+              type="text"
+              placeholder="First Name"
+              value={lookupFirst}
+              onChange={(e) => setLookupFirst(e.target.value)}
+              className={inputClass}
+              aria-label="First Name for lookup"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={!!(lookupLoading || (lookupResults && lookupResults.length === 1))}
+            className={buttonClass}
+          >{lookupLoading ? 'Searching…' : (lookupResults && lookupResults.length === 1 ? 'Match Found' : 'Search Invitation')}</button>
+        </form>
+        {lookupError ? <p className="text-xs mt-2 text-red-600" role="alert">{lookupError}</p> : null}
+        {lookupResults && lookupResults.length ? (
+          <div className="mt-2 text-xs">
+            <p className="font-semibold">Match{lookupResults.length > 1 ? 'es' : ''} ({lookupResults.length}):</p>
+            <ul className="list-disc ml-4 mt-1 space-y-1">
+              {lookupResults.map((m) => {
+                const seatMsg = m.seats > 0 ? ` — We have reserved ${m.seats} seat${m.seats > 1 ? 's' : ''} for you${m.seats > 1 ? ' and your party' : ''}.` : '';
+                return (
+                  <li key={m.rowIndex}>{m.firstName} {m.lastName}{m.marked ? ' • RSVP recorded' : ''}{seatMsg}</li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const nextErrors: { [k: string]: string } = {};
@@ -777,6 +845,12 @@ export default function App() {
 
   const showWelcomeOverlay = !isEntourage && welcomeStage !== 'hidden';
 
+  useEffect(() => {
+    if (lookupResults && lookupResults.length === 1) {
+      setBrowseWithoutRsvp(false);
+    }
+  }, [lookupResults]);
+
   return (
     <>
       <audio ref={audioRef} src={AUDIO_SRC} preload="auto" loop />
@@ -804,48 +878,7 @@ export default function App() {
                 ? 'Thank you for responding—your RSVP is recorded. Feel free to explore the schedule, venues, attire inspiration, and more below.'
                 : 'We’re so grateful to celebrate with you—find the schedule, venues, attire inspiration, and RSVP details inside.'}
             </p>
-            <div className="invite-lookup mt-4 p-4 rounded-lg bg-white/70 backdrop-blur-sm">
-              <h3 className="text-sm font-semibold mb-2">Find my Invitation</h3>
-              <form onSubmit={performInvitationLookup} className="grid gap-2" aria-label="Find my Invitation form">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    placeholder="Last Name"
-                    value={lookupLast}
-                    onChange={(e) => setLookupLast(e.target.value)}
-                    className="p-2 border rounded text-sm"
-                    aria-label="Last Name for lookup"
-                  />
-                  <input
-                    type="text"
-                    placeholder="First Name"
-                    value={lookupFirst}
-                    onChange={(e) => setLookupFirst(e.target.value)}
-                    className="p-2 border rounded text-sm"
-                    aria-label="First Name for lookup"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={!!(lookupLoading || (lookupResults && lookupResults.length === 1))}
-                  className={`mt-1 theme-btn px-3 py-2 rounded-full text-xs ${(lookupLoading || (lookupResults && lookupResults.length === 1)) ? 'opacity-60 cursor-not-allowed' : ''}`}
-                >{lookupLoading ? 'Searching…' : (lookupResults && lookupResults.length === 1 ? 'Match Found' : 'Search Invitation')}</button>
-              </form>
-              {lookupError ? <p className="text-xs mt-2 text-red-600" role="alert">{lookupError}</p> : null}
-              {lookupResults && lookupResults.length ? (
-                <div className="mt-2 text-xs">
-                  <p className="font-semibold">Match{lookupResults.length > 1 ? 'es' : ''} ({lookupResults.length}):</p>
-                  <ul className="list-disc ml-4 mt-1 space-y-1">
-                    {lookupResults.map((m) => {
-                      const seatMsg = m.seats > 0 ? ` — We have reserved ${m.seats} seat${m.seats > 1 ? 's' : ''} for you${m.seats > 1 ? ' and your party' : ''}.` : '';
-                      return (
-                        <li key={m.rowIndex}>{m.firstName} {m.lastName}{m.marked ? ' • RSVP recorded' : ''}{seatMsg}</li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              ) : null}
-            </div>
+            {renderInvitationLookup('overlay')}
             <button
               type="button"
               className={`welcome-skip theme-btn ${(!lookupResults || !lookupResults.length) ? 'opacity-60 cursor-not-allowed' : ''}`}
@@ -855,12 +888,19 @@ export default function App() {
             >
               Enter Site
             </button>
+            <button
+              type="button"
+              className="welcome-preview theme-btn outline mt-3"
+              onClick={handlePreviewBrowse}
+            >
+              Browse without RSVP
+            </button>
             {(!lookupResults || !lookupResults.length) ? (
-              <p className="mt-2 text-[11px] text-slate-600">Please search and confirm your name above to enter the site.</p>
+              <p className="mt-2 text-[11px] text-slate-600">Search and confirm your name above to enter the full experience, or continue browsing without RSVP.</p>
             ) : hasResponded ? (
               <p className="mt-2 text-[11px] text-green-700">You already responded — enjoy browsing the site.</p>
             ) : null}
-            <p className="welcome-tip">Using Messenger or Facebook’s browser? For the best experience, open this link in Chrome so all maps and images load properly.</p>
+            <p className="welcome-tip">Using Messenger or Facebook’s browser? For the best experience, open this link in Chrome so all maps and images load properly. You can always unlock the RSVP form later from the RSVP section.</p>
           </div>
         </div>
       ) : null}
@@ -1071,7 +1111,9 @@ export default function App() {
         <div className="max-w-md mx-auto text-center">
           <h2 className="font-script invitation-heading">RSVP</h2>
           <p className="theme-text-muted">Please RSVP by <strong>December 1, 2025</strong>. Use the form below to confirm attendance, number of guests, and any high chair needs.</p>
-          {!submitted ? (
+          {submitted ? (
+            <p className="mt-6 theme-text-muted text-xl">Thanks! We received your RSVP.</p>
+          ) : canShowRsvpForm ? (
             <div className="mt-6 theme-panel p-8 rounded-xl shadow-md">
               <form onSubmit={handleSubmit} className="grid gap-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1282,7 +1324,17 @@ export default function App() {
               </form>
             </div>
           ) : (
-            <p className="mt-6 theme-text-muted text-xl">Thanks! We received your RSVP.</p>
+            <div className="mt-6 space-y-4">
+              <div className="theme-panel p-6 rounded-xl text-left bg-white/80">
+                <p className="font-semibold text-slate-700">Browsing without RSVP</p>
+                <p className="text-sm text-slate-600 mt-2">You’re currently viewing the invitation details without unlocking the RSVP form. When you’re ready to respond, look up your invitation below and we’ll reveal the form instantly.</p>
+                <ul className="mt-3 text-sm text-slate-600 list-disc ml-5 space-y-1">
+                  <li>Searching for your invitation also auto-fills your reserved seats.</li>
+                  <li>If you already responded, we’ll show your recorded details here.</li>
+                </ul>
+              </div>
+              {renderInvitationLookup('inline')}
+            </div>
           )}
         </div>
         )}
