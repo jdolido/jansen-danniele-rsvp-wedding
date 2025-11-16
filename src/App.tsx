@@ -248,10 +248,11 @@ export default function App() {
     dismissWelcome();
   }, [lookupResults, startMusic, dismissWelcome]);
 
-  const handlePreviewBrowse = useCallback(() => {
+  const handlePreviewBrowse = useCallback(async () => {
     setBrowseWithoutRsvp(true);
+    await startMusic();
     dismissWelcome();
-  }, [dismissWelcome]);
+  }, [startMusic, dismissWelcome]);
 
   useEffect(() => {
     const audio = audioRef.current;
